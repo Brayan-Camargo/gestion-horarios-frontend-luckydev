@@ -1,18 +1,45 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
+<html lang="es" class="light"> <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Horarios | Frontend</title>
-    
+    <title>Panel de Horarios | LuckyDev</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configuramos Tailwind para que el modo oscuro se active con una clase
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<body class="bg-gray-100 dark:bg-[#0f1115] text-gray-800 dark:text-white font-sans p-4 md:p-8 transition-colors duration-300">
 
-    <div class="bg-white p-8 rounded-xl shadow-lg text-center">
-        <h1 class="text-3xl font-bold text-blue-600 mb-4">¡El Frontend está vivo! 🚀</h1>
-        <p class="text-gray-600">Este es el lienzo donde construiremos el calendario de horarios.</p>
+    <div class="max-w-6xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+            <div>
+                <h1 class="text-4xl font-extrabold mb-2">
+                    Gestión de Horarios
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500">
+                        LuckyDev
+                    </span>
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400">Vista clásica agrupada por día</p>
+            </div>
+            
+            <div class="flex gap-4">
+                <button id="btn-tema" class="p-3 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <span id="icono-tema" class="text-xl">🌙</span>
+                </button>
+
+                <button id="btn-probar" class="bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                    Cargar Horarios
+                </button>
+            </div>
+        </div>
+
+        <div id="contenedor-horarios" class="space-y-8">
+            </div>
     </div>
 
+    <script src="app.js"></script>
 </body>
 </html>
