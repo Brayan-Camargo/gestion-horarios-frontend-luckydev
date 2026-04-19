@@ -22,13 +22,44 @@ btnTema.addEventListener('click', () => {
     iconoTema.innerText = htmlElement.classList.contains('dark') ? '☀️' : '🌙';
 });
 
-// --- NUEVO: FUNCIÓN PARA GENERAR EL HORARIO EN JAVA ---
+
+
 botonGenerar.addEventListener('click', async () => {
+    
+    // REGLA DE NEGOCIO: Si la tabla ya tiene datos, lanzamos la alerta de peligro
+    if (datosGlobales && datosGlobales.length > 0) {
+        const { value: textoConfirmacion } = await Swal.fire({
+            title: '⚠️ ¡Cuidado!',
+            html: `Ya existe un horario generado para este mes. <br><br>
+                   Si continúas, <b>se borrará el horario actual y se generará uno completamente diferente</b>.<br><br>
+                   Escribe la palabra <b>CONFIRMAR</b> para proceder:`,
+            input: 'text',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444', // Rojo peligro de Tailwind
+            cancelButtonColor: '#4b5563', // Gris oscuro
+            confirmButtonText: 'Sí, regenerar horario',
+            cancelButtonText: 'Cancelar',
+            background: htmlElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+            color: htmlElement.classList.contains('dark') ? '#ffffff' : '#374151',
+            inputValidator: (value) => {
+                if (value !== 'CONFIRMAR') {
+                    return 'Debes escribir CONFIRMAR exactamente en mayúsculas.';
+                }
+            }
+        });
+
+        // Si el gerente presionó "Cancelar" o cerró la ventana, detenemos el proceso
+        if (!textoConfirmacion) {
+            return; 
+        }
+    }
+
+    // SI PASA LA SEGURIDAD, CONTINUAMOS CON LA GENERACIÓN
     botonGenerar.innerText = "Calculando...";
     botonGenerar.disabled = true;
 
     try {
-        // Hacemos el POST al Depto 1 (Ventas), en el mes de Abril (4) de 2026
         const respuesta = await fetch('http://localhost:8080/api/horarios/generar/1?mes=4&anio=2026', {
             method: 'POST'
         });
@@ -36,13 +67,22 @@ botonGenerar.addEventListener('click', async () => {
         if (!respuesta.ok) throw new Error('Error al generar el horario.');
         
         const textoRespuesta = await respuesta.text();
-        alert("🎉 " + textoRespuesta); // Mostrará: "✅ Horario generado con éxito..."
         
-        // Simular un clic en "Cargar Mes" para que se pinte en pantalla automáticamente
+        // Alerta de éxito elegante
+        Swal.fire({
+            title: '¡Listo!',
+            text: textoRespuesta,
+            icon: 'success',
+            background: htmlElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+            color: htmlElement.classList.contains('dark') ? '#ffffff' : '#374151',
+            confirmButtonColor: '#10b981' // Verde esmeralda
+        });
+        
+        // Simulamos clic en "Cargar Mes" para refrescar la tabla en automático
         botonProbar.click(); 
 
     } catch (error) {
-        alert("❌ Error: " + error.message);
+        Swal.fire('Error', error.message, 'error');
     } finally {
         botonGenerar.innerText = "⚙️ Generar Nuevo Mes";
         botonGenerar.disabled = false;
@@ -226,4 +266,110 @@ function formatearFechaBonita(fechaIso) {
         diaPalabra: nombreDia,
         fechaCorta: `${diaNum} ${nombreMes} ${anio}`
     };
+}
+
+// --- 🌟 LÓGICA DEL PANEL DE NOVEDADES (BANDEJA DE ENTRADA) ---
+
+const btnNovedades = document.getElementById('btn-novedades');
+const modalNovedades = document.getElementById('modal-novedades');
+const btnCerrarModal = document.getElementById('btn-cerrar-modal');
+const btnCerrarModalFooter = document.getElementById('btn-cerrar-modal-footer');
+const tablaNovedadesBody = document.getElementById('tabla-novedades-body');
+const badgeNovedades = document.getElementById('badge-novedades');
+
+// Datos simulados (Lo que después traeremos del backend con un GET /api/novedades/pendientes)
+let novedadesPendientes = [
+    { id: 1, empleado: "Vendedor 3", tipo: "VACACIONES", inicio: "2026-05-10", fin: "2026-05-15", prioridad: 4, observacion: "Viaje familiar anual" },
+    { id: 2, empleado: "Vendedor 1", tipo: "INCAPACIDAD", inicio: "2026-04-20", fin: "2026-04-22", prioridad: 5, observacion: "Infección estomacal (Folico IMSS 092)" },
+    { id: 3, empleado: "Vendedor 5", tipo: "PETICION_DESCANSO", inicio: "2026-04-18", fin: "2026-04-18", prioridad: 2, observacion: "Quiero descansar en sábado por un bautizo" }
+];
+
+// Funciones para abrir y cerrar el modal con animación
+function toggleModal() {
+    if (modalNovedades.classList.contains('hidden')) {
+        modalNovedades.classList.remove('hidden');
+        setTimeout(() => {
+            modalNovedades.classList.remove('opacity-0');
+            modalNovedades.children[0].classList.remove('scale-95');
+        }, 10);
+        renderizarNovedades();
+    } else {
+        modalNovedades.classList.add('opacity-0');
+        modalNovedades.children[0].classList.add('scale-95');
+        setTimeout(() => modalNovedades.classList.add('hidden'), 300);
+    }
+}
+
+btnNovedades.addEventListener('click', toggleModal);
+btnCerrarModal.addEventListener('click', toggleModal);
+btnCerrarModalFooter.addEventListener('click', toggleModal);
+
+// Función para pintar la tabla
+function renderizarNovedades() {
+    tablaNovedadesBody.innerHTML = '';
+    
+    // Actualizamos el globito rojo
+    badgeNovedades.innerText = novedadesPendientes.length;
+    if(novedadesPendientes.length === 0) badgeNovedades.classList.add('hidden');
+
+    novedadesPendientes.forEach(nov => {
+        // Configuramos el "Semáforo" según la prioridad
+        let colorPrioridad = "";
+        let textoPrioridad = "";
+        let botonesAccion = "";
+
+        if (nov.prioridad === 5) {
+            colorPrioridad = "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 border-red-200 dark:border-red-800";
+            textoPrioridad = "🚨 EMERGENCIA (Bloqueo Automático)";
+            // El gerente no puede rechazar una emergencia médica, solo decir "Enterado"
+            botonesAccion = `<button onclick="removerNovedad(${nov.id})" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-3 py-1 rounded font-bold transition">Enterado</button>`;
+        } else if (nov.prioridad >= 3) {
+            colorPrioridad = "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200 dark:border-amber-800";
+            textoPrioridad = "⭐ ALTA (Derecho / Permiso)";
+            botonesAccion = generarBotonesAprobacion(nov.id);
+        } else {
+            colorPrioridad = "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 border-blue-200 dark:border-blue-800";
+            textoPrioridad = "💡 BAJA (Preferencia)";
+            botonesAccion = generarBotonesAprobacion(nov.id);
+        }
+
+        const fila = `
+            <tr class="hover:bg-gray-50 dark:hover:bg-[#20242c] transition-colors border-b border-gray-50 dark:border-gray-800/50">
+                <td class="px-6 py-4">
+                    <div class="font-bold text-gray-800 dark:text-white">${nov.empleado}</div>
+                    <div class="text-xs text-gray-500 italic mt-1">"${nov.observacion}"</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="font-bold text-[11px] tracking-wider text-gray-500 dark:text-gray-400 uppercase">${nov.tipo}</div>
+                    <div class="font-mono text-sm mt-1">${nov.inicio} <span class="text-gray-400">al</span> ${nov.fin}</div>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <span class="px-2 py-1 rounded text-[10px] font-bold border ${colorPrioridad}">
+                        ${textoPrioridad}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-center flex justify-center gap-2">
+                    ${botonesAccion}
+                </td>
+            </tr>
+        `;
+        tablaNovedadesBody.innerHTML += fila;
+    });
+
+    if (novedadesPendientes.length === 0) {
+        tablaNovedadesBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-500">No hay peticiones pendientes. ¡Todo en orden! 🎉</td></tr>`;
+    }
+}
+
+function generarBotonesAprobacion(id) {
+    return `
+        <button onclick="removerNovedad(${id})" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded font-bold transition flex items-center gap-1"><span>✓</span> Aprobar</button>
+        <button onclick="removerNovedad(${id})" class="text-xs bg-gray-200 hover:bg-red-500 hover:text-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded font-bold transition flex items-center gap-1"><span>×</span> Rechazar</button>
+    `;
+}
+
+// Simula que el gerente procesó la petición (la quita de la lista)
+window.removerNovedad = function(id) {
+    novedadesPendientes = novedadesPendientes.filter(n => n.id !== id);
+    renderizarNovedades(); // Repintamos
 }
