@@ -6,8 +6,8 @@
     <title>Horario Mensual | LuckyDev</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script>tailwind.config = { darkMode: 'class' }</script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script> tailwind.config = {darkMode: 'class', theme: {extend: {}}}</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -31,33 +31,21 @@
                 <button id="btn-novedades" class="relative p-2 rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2">
                     <span class="text-lg">📥</span>
                     <span class="font-bold text-gray-700 dark:text-gray-300 hidden md:block">Peticiones</span>
-                    <span id="badge-novedades" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-white dark:border-gray-900 shadow-sm animate-pulse">
-                        3
+                    <span id="badge-novedades" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-white dark:border-gray-900 shadow-sm animate-pulse hidden">
+                        0
                     </span>
                 </button>
 
                 <button id="btn-probar" class="bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded-lg shadow transition">
-                    Cargar Mes Completo
+                    Cargar Mes
                 </button>
           
                 <button id="btn-generar" class="bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-bold py-2 px-4 rounded-lg shadow transition transform hover:scale-105">
                     ⚙️ Generar Nuevo Mes
                 </button>
 
-                <button id="btn-probar" class="bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded-lg shadow transition">
-                    Cargar Mes
-                </button>
-
                 <select id="selector-semana" class="hidden bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg shadow cursor-pointer outline-none focus:ring-2 focus:ring-orange-500">
                 </select>
-
-                <button id="btn-descargar" class="hidden bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow transition flex items-center gap-2">
-                    <span>📲</span> Enviar Semana
-                </button>
-                </div>
-
-                <select id="selector-semana" class="hidden bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg shadow cursor-pointer outline-none focus:ring-2 focus:ring-orange-500">
-                    </select>
 
                 <button id="btn-descargar" class="hidden bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow transition flex items-center gap-2">
                     <span>📲</span> Enviar Semana

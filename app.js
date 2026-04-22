@@ -1,9 +1,8 @@
-// Elementos DOM (Añadimos el nuevo botón)
 const btnTema = document.getElementById('btn-tema');
 const htmlElement = document.documentElement;
 const iconoTema = document.getElementById('icono-tema');
 const botonProbar = document.getElementById('btn-probar');
-const botonGenerar = document.getElementById('btn-generar'); // <-- NUEVO
+const botonGenerar = document.getElementById('btn-generar');
 const botonDescargar = document.getElementById('btn-descargar');
 const selectorSemana = document.getElementById('selector-semana');
 const zonaCaptura = document.getElementById('zona-captura');
@@ -11,22 +10,35 @@ const tablaHead = document.getElementById('tabla-head');
 const tablaBody = document.getElementById('tabla-body');
 const tituloSemana = document.getElementById('titulo-semana');
 
+// Elementos del Modal de Novedades
+const btnNovedades = document.getElementById('btn-novedades');
+const modalNovedades = document.getElementById('modal-novedades');
+const btnCerrarModal = document.getElementById('btn-cerrar-modal');
+const btnCerrarModalFooter = document.getElementById('btn-cerrar-modal-footer');
+const tablaNovedadesBody = document.getElementById('tabla-novedades-body');
+const badgeNovedades = document.getElementById('badge-novedades');
+
+// Variables Globales de Estado
 let datosGlobales = [];
 let mesPrincipal = "";
 let fechasUnicasMes = [];
 let empleadosUnicos = [];
+let novedadesPendientes = [];
+const DEPARTAMENTO_ID = 1;
 
+// ==========================================
+// 2. CONFIGURACIÓN INICIAL Y TEMA
+// ==========================================
 iconoTema.innerText = '☀️';
 btnTema.addEventListener('click', () => {
     htmlElement.classList.toggle('dark');
     iconoTema.innerText = htmlElement.classList.contains('dark') ? '☀️' : '🌙';
 });
 
-
-
+// ==========================================
+// 3. MOTOR DE GENERACIÓN Y CARGA DE HORARIOS
+// ==========================================
 botonGenerar.addEventListener('click', async () => {
-    
-    // REGLA DE NEGOCIO: Si la tabla ya tiene datos, lanzamos la alerta de peligro
     if (datosGlobales && datosGlobales.length > 0) {
         const { value: textoConfirmacion } = await Swal.fire({
             title: '⚠️ ¡Cuidado!',
@@ -36,8 +48,8 @@ botonGenerar.addEventListener('click', async () => {
             input: 'text',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#ef4444', // Rojo peligro de Tailwind
-            cancelButtonColor: '#4b5563', // Gris oscuro
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#4b5563',
             confirmButtonText: 'Sí, regenerar horario',
             cancelButtonText: 'Cancelar',
             background: htmlElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
@@ -49,13 +61,9 @@ botonGenerar.addEventListener('click', async () => {
             }
         });
 
-        // Si el gerente presionó "Cancelar" o cerró la ventana, detenemos el proceso
-        if (!textoConfirmacion) {
-            return; 
-        }
+        if (!textoConfirmacion) return; 
     }
 
-    // SI PASA LA SEGURIDAD, CONTINUAMOS CON LA GENERACIÓN
     botonGenerar.innerText = "Calculando...";
     botonGenerar.disabled = true;
 
@@ -68,17 +76,15 @@ botonGenerar.addEventListener('click', async () => {
         
         const textoRespuesta = await respuesta.text();
         
-        // Alerta de éxito elegante
         Swal.fire({
             title: '¡Listo!',
             text: textoRespuesta,
             icon: 'success',
             background: htmlElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
             color: htmlElement.classList.contains('dark') ? '#ffffff' : '#374151',
-            confirmButtonColor: '#10b981' // Verde esmeralda
+            confirmButtonColor: '#10b981'
         });
         
-        // Simulamos clic en "Cargar Mes" para refrescar la tabla en automático
         botonProbar.click(); 
 
     } catch (error) {
@@ -89,8 +95,6 @@ botonGenerar.addEventListener('click', async () => {
     }
 });
 
-
-// --- FUNCIÓN DE CARGAR (Protegida) ---
 botonProbar.addEventListener('click', async () => {
     botonProbar.innerText = "Cargando...";
 
@@ -100,18 +104,17 @@ botonProbar.addEventListener('click', async () => {
         
         datosGlobales = await respuesta.json();
 
-        // 🛡️ EL ESCUDO: Si Java nos devuelve 0 datos, avisamos y detenemos el proceso
         if (datosGlobales.length === 0) {
             alert("⚠️ No hay horarios generados para este departamento aún. Haz clic en 'Generar Nuevo Mes'.");
             botonProbar.innerText = "Cargar Mes";
-            return; // Nos salimos aquí para que no explote el Invalid Date
+            return; 
         }
 
         fechasUnicasMes = [...new Set(datosGlobales.map(d => d.inicio.split('T')[0]))].sort();
         empleadosUnicos = [...new Set(datosGlobales.map(d => d.nombreEmpleado))].sort();
 
         const fechaMedio = fechasUnicasMes[Math.floor(fechasUnicasMes.length / 2)];
-        mesPrincipal = fechaMedio.split('-')[1]; // Guarda "04" si es Abril
+        mesPrincipal = fechaMedio.split('-')[1]; 
 
         configurarSelectorSemanas();
         selectorSemana.classList.remove('hidden');
@@ -127,6 +130,9 @@ botonProbar.addEventListener('click', async () => {
     }
 });
 
+// ==========================================
+// 4. RENDERIZADO VISUAL Y EXPORTACIÓN
+// ==========================================
 function configurarSelectorSemanas() {
     selectorSemana.innerHTML = '';
     const totalSemanas = Math.ceil(fechasUnicasMes.length / 7);
@@ -147,7 +153,6 @@ function renderizarMatrizSemanal(indiceSemana) {
     const inicio = indiceSemana * 7;
     let diasDeEstaSemana = fechasUnicasMes.slice(inicio, inicio + 7);
 
-    // Lógica para rellenar si faltan días al final (ya la tenías)
     const diasFaltantes = 7 - diasDeEstaSemana.length;
     if (diasFaltantes > 0) {
         let ultimaFecha = new Date(diasDeEstaSemana[diasDeEstaSemana.length - 1] + "T12:00:00");
@@ -157,14 +162,14 @@ function renderizarMatrizSemanal(indiceSemana) {
         }
     }
 
-    // 1. Pintamos los encabezados usando la función de fechas bonitas
-    let trHead = `<tr><th class="p-3 border border-gray-200 dark:border-gray-700 text-left bg-gray-50 dark:bg-gray-800/50">EMPLEADO</th>`;
+    // 🌙 ARREGLO DARK MODE: Forzamos el texto claro en la cabecera
+    let trHead = `<tr><th class="p-3 border border-gray-200 dark:border-gray-700 text-left bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">EMPLEADO</th>`;
     diasDeEstaSemana.forEach(fecha => {
         const esRelleno = fecha.split('-')[1] !== mesPrincipal;
-        const estiloCabecera = esRelleno ? "text-gray-400 dark:text-gray-500 italic" : "";
-        const fechaBonita = formatearFechaBonita(fecha); // Usamos el traductor
+        const estiloCabecera = esRelleno ? "text-gray-400 dark:text-gray-500 italic" : "text-gray-800 dark:text-gray-200";
+        const fechaBonita = formatearFechaBonita(fecha); 
         
-        trHead += `<th class="p-3 border border-gray-200 dark:border-gray-700 min-w-[120px] ${estiloCabecera}">
+        trHead += `<th class="p-3 border border-gray-200 dark:border-gray-700 min-w-[120px] ${estiloCabecera} bg-gray-50 dark:bg-gray-800/80">
                         <div class="font-normal text-xs mb-1">${fechaBonita.diaPalabra}</div>
                         <div class="font-bold text-sm tracking-wide">${fechaBonita.fechaCorta}</div>
                    </th>`;
@@ -172,27 +177,25 @@ function renderizarMatrizSemanal(indiceSemana) {
     trHead += `</tr>`;
     tablaHead.innerHTML = trHead;
 
-    // Actualizamos el título principal
     const primera = formatearFechaBonita(diasDeEstaSemana[0]);
     const ultima = formatearFechaBonita(diasDeEstaSemana[6]);
     tituloSemana.innerText = `Semana ${indiceSemana + 1} | ${primera.fechaCorta} AL ${ultima.fechaCorta}`;
 
-    // 2. Pintamos las celdas de los turnos
+    // 🌙 ARREGLO DARK MODE: Forzamos el texto claro en el cuerpo de la tabla
+    tablaBody.className = "text-gray-800 dark:text-gray-200";
     tablaBody.innerHTML = '';
+    
     empleadosUnicos.forEach(emp => {
-        let trBody = `<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition">
-                        <td class="p-3 border border-gray-200 dark:border-gray-700 text-left font-bold bg-gray-50 dark:bg-gray-800/20">${emp}</td>`;
+        let trBody = `<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition">
+                        <td class="p-3 border border-gray-200 dark:border-gray-700 text-left font-bold bg-gray-50 dark:bg-gray-800/50">${emp}</td>`;
         
         diasDeEstaSemana.forEach(fecha => {
             const mesActualCelda = parseInt(fecha.split('-')[1]);
             const mesPrincipalNum = parseInt(mesPrincipal);
             const esOtroMes = mesActualCelda !== mesPrincipalNum;
             
-            // Determinamos si es Mes Anterior o Próximo Mes
             let etiquetaMes = "";
             if (esOtroMes) {
-                // Si el mes de la celda es menor al principal, es "Mes Anterior" (Ej. Marzo vs Abril). 
-                // Cuidado con el cruce de años (Diciembre 12 vs Enero 1).
                 if (mesActualCelda < mesPrincipalNum || (mesActualCelda === 12 && mesPrincipalNum === 1)) {
                     etiquetaMes = "Mes Anterior";
                 } else {
@@ -203,13 +206,39 @@ function renderizarMatrizSemanal(indiceSemana) {
             const turno = datosGlobales.find(d => d.nombreEmpleado === emp && d.inicio.split('T')[0] === fecha);
             
             let contenidoCelda = '<span class="text-gray-300 dark:text-gray-600">-</span>';
-            let clasesCelda = "p-3 border border-gray-200 dark:border-gray-700 relative h-16 ";
+            let clasesCelda = "p-3 border border-gray-200 dark:border-gray-700 relative h-16 text-center ";
 
             if (turno) {
                 if (turno.esDescanso) {
-                    contenidoCelda = 'DESCANSO';
-                    clasesCelda += 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400 font-bold text-xs tracking-widest';
+                    const esDescansoNormal = turno.tipoTurno === "DESCANSO" || turno.tipoTurno === "DESCANSO_SEMANAL";
+                    
+                    if (esDescansoNormal) {
+                        contenidoCelda = 'DESCANSO';
+                        clasesCelda += 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400 font-bold text-xs tracking-widest';
+                    
+                    } else if (turno.tipoTurno === "APOYO_SUCURSAL") {
+                        contenidoCelda = `
+                            <div class="w-full h-full flex flex-col items-center justify-center">
+                                <span class="text-amber-600 dark:text-amber-400 font-bold text-[10px] tracking-wider uppercase text-center leading-tight">APOYO<br>OTRA TIENDA</span>
+                            </div>
+                        `;
+                        clasesCelda += 'bg-amber-50 dark:bg-amber-900/20';
+
+                    } else {
+                        // 🕵️‍♂️ REGLA DE PRIVACIDAD
+                        const esPrivado = turno.tipoTurno.includes('PERMISO');
+                        const textoGerente = esPrivado ? 'DESCANSO' : turno.tipoTurno.replace('_', ' ');
+
+                        contenidoCelda = `
+                            <div class="w-full h-full flex items-center justify-center">
+                                <span class="vista-gerente text-purple-700 dark:text-purple-300 font-bold text-[11px] tracking-wider uppercase">${textoGerente}</span>
+                                <span class="vista-empleado hidden text-gray-600 dark:text-gray-400 font-bold text-xs tracking-widest">DESCANSO</span>
+                            </div>
+                        `;
+                        clasesCelda += 'bg-purple-50 dark:bg-purple-900/20';
+                    }
                 } else {
+                    // 🚀 AQUÍ ESTÁ EL BLOQUE QUE NOS FALTABA PARA APERTURAS Y CIERRES
                     const horaIn = turno.inicio.split('T')[1].substring(0, 5);
                     const horaFin = turno.fin.split('T')[1].substring(0, 5);
                     contenidoCelda = `
@@ -218,43 +247,24 @@ function renderizarMatrizSemanal(indiceSemana) {
                     `;
                 }
 
-                // Aplicamos la etiqueta correspondiente
                 if (esOtroMes) {
-                    clasesCelda += ' opacity-60 bg-gray-50/50 dark:bg-gray-900/50';
-                    // Cambié el color del texto a un gris medio (gray-500) para que no sea tan chillón como el naranja, y sea más elegante.
-                    contenidoCelda += `<div class="absolute bottom-0 right-0 left-0 text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider text-center pb-1">${etiquetaMes}</div>`;
+                    clasesCelda += ' opacity-50 bg-gray-100 dark:bg-gray-900/60';
+                    contenidoCelda += `<div class="absolute bottom-0 right-0 left-0 text-[10px] text-gray-500 dark:text-gray-500 font-bold uppercase tracking-wider text-center pb-1">${etiquetaMes}</div>`;
                 }
             }
 
             trBody += `<td class="${clasesCelda}">${contenidoCelda}</td>`;
-        });
+        }); // Cierra el forEach de diasDeEstaSemana
         
         trBody += `</tr>`;
         tablaBody.innerHTML += trBody;
-    });
+    }); // Cierra el forEach de empleadosUnicos
 }
 
-botonDescargar.addEventListener('click', () => {
-    zonaCaptura.classList.remove('shadow-lg', 'rounded-xl');
-    html2canvas(zonaCaptura, {
-        backgroundColor: htmlElement.classList.contains('dark') ? '#1a1d24' : '#ffffff',
-        scale: 2 
-    }).then(canvas => {
-        const urlImagen = canvas.toDataURL("image/png");
-        const link = document.createElement('a');
-        link.download = `LuckyDev_Horario_Semana_${selectorSemana.value}.png`;
-        link.href = urlImagen;
-        link.click();
-        zonaCaptura.classList.add('shadow-lg', 'rounded-xl');
-    });
-});
-
-// Función para convertir "2026-04-17" a "Viernes, 17 Abril 2026"
 function formatearFechaBonita(fechaIso) {
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     
-    // Sumamos "T12:00:00" para evitar problemas de zona horaria que puedan restar un día
     const fecha = new Date(fechaIso + "T12:00:00");
     
     const nombreDia = dias[fecha.getDay()];
@@ -268,23 +278,32 @@ function formatearFechaBonita(fechaIso) {
     };
 }
 
-// --- 🌟 LÓGICA DEL PANEL DE NOVEDADES (BANDEJA DE ENTRADA) ---
+// ==========================================
+// 5. BANDEJA DE NOVEDADES (API REST)
+// ==========================================
+async function cargarNovedadesDesdeAPI() {
+    try {
+        const respuesta = await fetch(`http://localhost:8080/api/novedades/pendientes/${DEPARTAMENTO_ID}`);
+        if (!respuesta.ok) throw new Error('Error al conectar con la bandeja de novedades');
+        
+        const datos = await respuesta.json();
+        
+        novedadesPendientes = datos.map(n => ({
+            id: n.id,
+            empleado: n.empleado.nombre,
+            tipo: n.tipo,
+            inicio: n.fechaInicio,
+            fin: n.fechaFin,
+            prioridad: n.nivelPrioridad,
+            observacion: n.observacion || "Sin observaciones"
+        }));
 
-const btnNovedades = document.getElementById('btn-novedades');
-const modalNovedades = document.getElementById('modal-novedades');
-const btnCerrarModal = document.getElementById('btn-cerrar-modal');
-const btnCerrarModalFooter = document.getElementById('btn-cerrar-modal-footer');
-const tablaNovedadesBody = document.getElementById('tabla-novedades-body');
-const badgeNovedades = document.getElementById('badge-novedades');
+        renderizarNovedades();
+    } catch (error) {
+        console.error("❌ Fallo al cargar novedades:", error);
+    }
+}
 
-// Datos simulados (Lo que después traeremos del backend con un GET /api/novedades/pendientes)
-let novedadesPendientes = [
-    { id: 1, empleado: "Vendedor 3", tipo: "VACACIONES", inicio: "2026-05-10", fin: "2026-05-15", prioridad: 4, observacion: "Viaje familiar anual" },
-    { id: 2, empleado: "Vendedor 1", tipo: "INCAPACIDAD", inicio: "2026-04-20", fin: "2026-04-22", prioridad: 5, observacion: "Infección estomacal (Folico IMSS 092)" },
-    { id: 3, empleado: "Vendedor 5", tipo: "PETICION_DESCANSO", inicio: "2026-04-18", fin: "2026-04-18", prioridad: 2, observacion: "Quiero descansar en sábado por un bautizo" }
-];
-
-// Funciones para abrir y cerrar el modal con animación
 function toggleModal() {
     if (modalNovedades.classList.contains('hidden')) {
         modalNovedades.classList.remove('hidden');
@@ -292,7 +311,7 @@ function toggleModal() {
             modalNovedades.classList.remove('opacity-0');
             modalNovedades.children[0].classList.remove('scale-95');
         }, 10);
-        renderizarNovedades();
+        cargarNovedadesDesdeAPI(); // Cargamos datos al abrir
     } else {
         modalNovedades.classList.add('opacity-0');
         modalNovedades.children[0].classList.add('scale-95');
@@ -300,20 +319,22 @@ function toggleModal() {
     }
 }
 
+// Event Listeners del Modal asignados de forma limpia
 btnNovedades.addEventListener('click', toggleModal);
 btnCerrarModal.addEventListener('click', toggleModal);
 btnCerrarModalFooter.addEventListener('click', toggleModal);
 
-// Función para pintar la tabla
 function renderizarNovedades() {
     tablaNovedadesBody.innerHTML = '';
     
-    // Actualizamos el globito rojo
     badgeNovedades.innerText = novedadesPendientes.length;
-    if(novedadesPendientes.length === 0) badgeNovedades.classList.add('hidden');
+    if(novedadesPendientes.length === 0) {
+        badgeNovedades.classList.add('hidden');
+    } else {
+        badgeNovedades.classList.remove('hidden');
+    }
 
     novedadesPendientes.forEach(nov => {
-        // Configuramos el "Semáforo" según la prioridad
         let colorPrioridad = "";
         let textoPrioridad = "";
         let botonesAccion = "";
@@ -321,8 +342,7 @@ function renderizarNovedades() {
         if (nov.prioridad === 5) {
             colorPrioridad = "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 border-red-200 dark:border-red-800";
             textoPrioridad = "🚨 EMERGENCIA (Bloqueo Automático)";
-            // El gerente no puede rechazar una emergencia médica, solo decir "Enterado"
-            botonesAccion = `<button onclick="removerNovedad(${nov.id})" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-3 py-1 rounded font-bold transition">Enterado</button>`;
+            botonesAccion = `<button onclick="aprobarNovedad(${nov.id})" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-3 py-1 rounded font-bold transition">Enterado</button>`;
         } else if (nov.prioridad >= 3) {
             colorPrioridad = "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200 dark:border-amber-800";
             textoPrioridad = "⭐ ALTA (Derecho / Permiso)";
@@ -361,15 +381,56 @@ function renderizarNovedades() {
     }
 }
 
-function generarBotonesAprobacion(id) {
-    return `
-        <button onclick="removerNovedad(${id})" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded font-bold transition flex items-center gap-1"><span>✓</span> Aprobar</button>
-        <button onclick="removerNovedad(${id})" class="text-xs bg-gray-200 hover:bg-red-500 hover:text-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded font-bold transition flex items-center gap-1"><span>×</span> Rechazar</button>
-    `;
+async function aprobarNovedad(id) {
+    try {
+        const respuesta = await fetch(`http://localhost:8080/api/novedades/${id}/aprobar`, {
+            method: 'PUT'
+        });
+
+        if (respuesta.ok) {
+            Swal.fire({
+                title: 'Aprobada',
+                text: 'La petición ha sido aceptada. El próximo horario la respetará.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            cargarNovedadesDesdeAPI(); 
+        }
+    } catch (error) {
+        Swal.fire('Error', 'No se pudo procesar la aprobación', 'error');
+    }
 }
 
-// Simula que el gerente procesó la petición (la quita de la lista)
-window.removerNovedad = function(id) {
-    novedadesPendientes = novedadesPendientes.filter(n => n.id !== id);
-    renderizarNovedades(); // Repintamos
+async function rechazarNovedad(id) {
+    const confirmacion = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: "La petición será eliminada permanentemente.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Sí, rechazar'
+    });
+
+    if (confirmacion.isConfirmed) {
+        try {
+            const respuesta = await fetch(`http://localhost:8080/api/novedades/${id}/rechazar`, {
+                method: 'DELETE'
+            });
+
+            if (respuesta.ok) {
+                Swal.fire('Eliminada', 'Petición rechazada con éxito.', 'success');
+                cargarNovedadesDesdeAPI();
+            }
+        } catch (error) {
+            Swal.fire('Error', 'No se pudo eliminar la petición', 'error');
+        }
+    }
+}
+
+function generarBotonesAprobacion(id) {
+    return `
+        <button onclick="aprobarNovedad(${id})" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded font-bold transition flex items-center gap-1"><span>✓</span> Aprobar</button>
+        <button onclick="rechazarNovedad(${id})" class="text-xs bg-gray-200 hover:bg-red-500 hover:text-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded font-bold transition flex items-center gap-1"><span>×</span> Rechazar</button>
+    `;
 }
