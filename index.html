@@ -4,101 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Horario Mensual | LuckyDev</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script> tailwind.config = {darkMode: 'class', theme: {extend: {}}}</script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { fontFaimly: { sans: ['Inter', 'sans-serif'] } } } }
+    </script>
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-gray-100 dark:bg-[#0f1115] text-gray-800 dark:text-white font-sans p-4 transition-colors duration-300 min-h-screen">
-
     <div class="max-w-7xl mx-auto">
-        
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
             <div>
-                <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500">
-                    LuckyDev
-                </h1>
+                <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500">LuckyDev</h1>
                 <p class="text-xl font-bold dark:text-gray-300">Horario Mensual por Semanas</p>
             </div>
-            
             <div class="flex gap-3 flex-wrap justify-center items-center">
                 <button id="btn-tema" class="p-2 rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 hover:bg-gray-50 transition">
                     <span id="icono-tema" class="text-lg">🌙</span>
                 </button>
-
-                <button id="btn-novedades" class="relative p-2 rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2">
+                <button id="btn-novedades" class="relative p-2 rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 hover:bg-gray-50 transition flex items-center gap-2">
                     <span class="text-lg">📥</span>
+                    <span id="badge-novedades" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-white dark:border-gray-900 shadow-sm hidden">0</span>
                     <span class="font-bold text-gray-700 dark:text-gray-300 hidden md:block">Peticiones</span>
-                    <span id="badge-novedades" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-white dark:border-gray-900 shadow-sm animate-pulse hidden">
-                        0
-                    </span>
                 </button>
-
-                <button id="btn-probar" class="bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded-lg shadow transition">
-                    Cargar Mes
-                </button>
-          
-                <button id="btn-generar" class="bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-bold py-2 px-4 rounded-lg shadow transition transform hover:scale-105">
-                    ⚙️ Generar Nuevo Mes
-                </button>
-
-                <select id="selector-semana" class="hidden bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg shadow cursor-pointer outline-none focus:ring-2 focus:ring-orange-500">
-                </select>
-
-                <button id="btn-descargar" class="hidden bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow transition flex items-center gap-2">
-                    <span>📲</span> Enviar Semana
-                </button>
+                <button id="btn-probar" class="bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded-lg shadow transition">Cargar Mes</button>
+                <button id="btn-generar" class="bg-gradient-to-r from-orange-500 to-rose-500 text-white font-bold py-2 px-4 rounded-lg shadow transition transform hover:scale-105">⚙️ Generar Nuevo Mes</button>
+                <select id="selector-semana" class="hidden bg-white dark:bg-gray-800 border py-2 px-4 rounded-lg shadow outline-none focus:ring-2 focus:ring-orange-500"></select>
+                <button id="btn-descargar" class="hidden bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow transition flex items-center gap-2"><span>📲</span> Enviar Semana</button>
             </div>
         </div>
 
-        <div id="zona-captura" class="bg-white dark:bg-[#1a1d24] p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 overflow-x-auto hidden">
-            <h2 id="titulo-semana" class="text-center font-bold text-xl mb-4 text-gray-800 dark:text-white uppercase tracking-wider"></h2>
-            
-            <table class="w-full text-center text-sm border-collapse">
-                <thead id="tabla-head" class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs uppercase font-bold border-b-2 border-gray-300 dark:border-gray-600">
-                </thead>
-                <tbody id="tabla-body" class="divide-y divide-gray-200 dark:divide-gray-800/50">
-                </tbody>
+        <div id="zona-captura" class="hidden">
+            <h2 id="titulo-semana" class="text-center font-bold text-xl mb-4 uppercase tracking-wider text-gray-800 dark:text-white"></h2>
+            <table class="w-full border-collapse">
+                <thead id="tabla-head"></thead>
+                <tbody id="tabla-body"></tbody>
             </table>
         </div>
     </div>
-
-    <div id="modal-novedades" class="fixed inset-0 z-50 hidden bg-gray-900/50 dark:bg-black/70 backdrop-blur-sm flex justify-center items-center p-4 transition-opacity duration-300 opacity-0">
-        <div class="bg-white dark:bg-[#1a1d24] w-full max-w-4xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform scale-95 transition-transform duration-300">
-            
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-                <div>
-                    <h3 class="text-xl font-extrabold text-gray-800 dark:text-white">Bandeja de Entrada</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Aprueba o rechaza peticiones antes de generar el mes.</p>
-                </div>
-                <button id="btn-cerrar-modal" class="text-gray-400 hover:text-red-500 transition text-2xl font-bold">&times;</button>
-            </div>
-
-            <div class="p-0 overflow-x-auto max-h-[60vh] overflow-y-auto">
-                <table class="w-full text-left text-sm border-collapse">
-                    <thead class="bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-400 text-xs uppercase font-bold sticky top-0">
-                        <tr>
-                            <th class="px-6 py-3">Empleado</th>
-                            <th class="px-6 py-3">Tipo & Fechas</th>
-                            <th class="px-6 py-3 text-center">Prioridad</th>
-                            <th class="px-6 py-3 text-center">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-novedades-body" class="divide-y divide-gray-100 dark:divide-gray-800">
-                        </tbody>
-                </table>
-            </div>
-
-            <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-                <button id="btn-cerrar-modal-footer" class="bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 dark:hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg shadow transition">
-                    Cerrar Bandeja
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script src="app.js"></script>
 </body>
 </html>
