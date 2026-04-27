@@ -1,6 +1,10 @@
 /* FUENTE GLOBAL */
 body { font-family: 'Inter', sans-serif !important; }
 
+#tabla-body td {
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
 /* CONTENEDOR PRINCIPAL */
 #zona-captura {
     background-color: #ffffff !important;
@@ -87,3 +91,19 @@ body { font-family: 'Inter', sans-serif !important; }
     background-color: rgba(255,255,255,0.05) !important;
 }
 
+/* Esto asegura que el modal sea suave al aparecer */
+#modal-empleados.hidden {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+
+#modal-empleados:not(.hidden) {
+    display: flex !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+}
+
+#modal-empleados {
+    transition: opacity 0.3s ease-out;
+}
