@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>LuckyDev - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#0f1115] flex items-center justify-center min-h-screen">
+    <div class="bg-[#1a1d23] p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-800">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-black text-indigo-500">LuckyDev</h1>
+            <p class="text-gray-400 mt-2 text-sm uppercase tracking-widest">Gestión de Horarios</p>
+        </div>
+
+        <form id="form-login" class="space-y-6">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Usuario</label>
+                <input type="text" id="username" required class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl text-white focus:border-indigo-500 outline-none transition">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Contraseña</label>
+                <input type="password" id="password" required class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl text-white focus:border-indigo-500 outline-none transition">
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-indigo-500/20">
+                Entrar al Sistema
+            </button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="js/auth.js"></script>
+    <script>
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const userVal = document.getElementById('username').value;
+        const passVal = document.getElementById('password').value;
+
+        // Llamamos a la función que está en js/auth.js
+        const res = await Auth.login(userVal, passVal);
+
+        console.log("Respuesta del login:", res); // Esto te dirá si entró o no
+
+        if (res.success) {
+            // REDIRECCIÓN INTELIGENTE
+            if (res.rol === Auth.LEVELS.SUPER_ADMIN) {
+                window.location.href = "admin.html";
+            } else if (res.rol === Auth.LEVELS.EMPLEADO) {
+                window.location.href = "checador.html";
+            } else {
+                // GERENTES y ADMIN_EMPRESA van al index
+                window.location.href = "index.html";
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Acceso Denegado',
+                text: res.message,
+                background: '#1a1d23',
+                color: '#ffffff'
+            });
+        }
+    });
+</script>
+</body>
+</html>

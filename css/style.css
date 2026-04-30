@@ -1,0 +1,331 @@
+/* FUENTE GLOBAL */
+body { font-family: 'Inter', sans-serif !important; }
+
+/* ==========================================
+   CONTENEDOR PRINCIPAL
+   ========================================== */
+#zona-captura {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 1rem !important;
+    padding: 1.5rem !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07) !important;
+}
+.dark #zona-captura {
+    background-color: #0f1115 !important;
+    border: 1px solid #1f2937 !important;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5) !important;
+}
+
+/* ==========================================
+   📱 RESPONSIVE MÓVIL
+   ========================================== */
+
+/* Wrapper de scroll horizontal con indicador de swipe */
+.tabla-scroll-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #f97316 transparent;
+    position: relative;
+}
+.tabla-scroll-wrapper::-webkit-scrollbar {
+    height: 4px;
+}
+.tabla-scroll-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+.tabla-scroll-wrapper::-webkit-scrollbar-thumb {
+    background: #f97316;
+    border-radius: 99px;
+}
+
+/* Hint de swipe — solo visible en móvil */
+.swipe-hint {
+    display: none;
+    text-align: center;
+    font-size: 0.7rem;
+    color: #9ca3af;
+    padding: 6px 0 2px;
+    letter-spacing: 0.05em;
+}
+
+@media (max-width: 768px) {
+    /* Mostrar hint de swipe */
+    .swipe-hint { display: block; }
+
+    /* Padding reducido en móvil */
+    #zona-captura { padding: 0.75rem !important; }
+
+    /* Cabeceras más compactas */
+    #zona-captura th {
+        padding: 0.5rem 0.25rem !important;
+        min-width: 72px !important;
+    }
+
+    /* Columna empleado fija a la izquierda */
+    #zona-captura .columna-empleado {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 10 !important;
+        min-width: 90px !important;
+        max-width: 90px !important;
+        font-size: 0.72rem !important;
+        padding: 0.5rem 0.4rem !important;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.08) !important;
+    }
+    .dark #zona-captura .columna-empleado {
+        box-shadow: 2px 0 8px rgba(0,0,0,0.4) !important;
+    }
+
+    /* Celdas más pequeñas en móvil */
+    #zona-captura td {
+        height: 5.5rem !important;
+        padding: 0.25rem !important;
+        min-width: 72px !important;
+    }
+
+    /* Texto de hora más pequeño en móvil */
+    #zona-captura .texto-hora {
+        font-size: 0.75rem !important;
+    }
+
+    /* Turno más compacto */
+    #zona-captura .turno-apertura,
+    #zona-captura .turno-cierre {
+        font-size: 0.55rem !important;
+        padding: 1px 4px !important;
+    }
+
+    /* Fecha en cabecera más compacta */
+    #zona-captura th .text-sm {
+        font-size: 0.65rem !important;
+    }
+    #zona-captura th .text-\[10px\] {
+        font-size: 0.6rem !important;
+    }
+
+    /* Título de semana más pequeño */
+    #titulo-semana {
+        font-size: 0.85rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    /* Descanso más compacto */
+    #zona-captura .estado-descanso {
+        font-size: 0.55rem !important;
+        padding: 0.2rem 0.3rem !important;
+    }
+
+    /* Botones del header en móvil: 2 filas */
+    .flex.gap-3.flex-wrap {
+        gap: 0.4rem !important;
+    }
+}
+
+/* ==========================================
+   TABLA Y CABECERAS
+   ========================================== */
+#zona-captura table {
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+/* LIGHT MODE cabeceras */
+#zona-captura th,
+#zona-captura .columna-empleado {
+    background-color: #f1f5f9 !important;
+    color: #1e293b !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 1rem !important;
+    font-weight: 700 !important;
+}
+
+/* DARK MODE cabeceras */
+.dark #zona-captura th,
+.dark #zona-captura .columna-empleado {
+    background-color: #161a22 !important;
+    color: #f8fafc !important;
+    border: 1px solid #1f2937 !important;
+}
+
+/* ==========================================
+   CELDAS
+   ========================================== */
+#zona-captura td {
+    border: 1px solid #e2e8f0 !important;
+    height: 7rem !important;
+    padding: 0.5rem !important;
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+}
+.dark #zona-captura td {
+    border: 1px solid #1f2937 !important;
+    background-color: transparent !important;
+    color: inherit !important;
+}
+
+/* Columna empleado */
+#zona-captura .columna-empleado {
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    background-color: #f8fafc !important;
+    min-width: 120px !important;
+}
+.dark #zona-captura .columna-empleado {
+    color: #f8fafc !important;
+    background-color: #161a22 !important;
+}
+
+/* ==========================================
+   🟠 RESALTADO HOY — COLUMNA COMPLETA
+   ========================================== */
+#zona-captura th.cabecera-hoy {
+    background: linear-gradient(135deg, #ff6b00 0%, #ff9500 100%) !important;
+    border-color: #ff6b00 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.4) !important;
+}
+#zona-captura th.cabecera-hoy .opacity-60 { color: rgba(255,255,255,0.8) !important; opacity: 1 !important; }
+#zona-captura th.cabecera-hoy div { color: #ffffff !important; }
+
+/* Celdas HOY en LIGHT MODE */
+#zona-captura td.celda-hoy {
+    background: linear-gradient(135deg, rgba(255, 107, 0, 0.07) 0%, rgba(255, 149, 0, 0.04) 100%) !important;
+    border-left: 2px solid rgba(249, 115, 22, 0.3) !important;
+    border-right: 2px solid rgba(249, 115, 22, 0.3) !important;
+}
+/* Celdas HOY en DARK MODE */
+.dark #zona-captura td.celda-hoy {
+    background: linear-gradient(135deg, rgba(255, 107, 0, 0.12) 0%, rgba(255, 149, 0, 0.06) 100%) !important;
+    border-left: 2px solid rgba(249, 115, 22, 0.5) !important;
+    border-right: 2px solid rgba(249, 115, 22, 0.5) !important;
+}
+
+/* Etiqueta HOY */
+#zona-captura .etiqueta-hoy {
+    display: inline-block;
+    background: rgba(255,255,255,0.25);
+    color: #ffffff !important;
+    font-size: 0.6rem;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    padding: 1px 6px;
+    border-radius: 99px;
+    margin-top: 4px;
+    text-transform: uppercase;
+}
+
+/* ==========================================
+   DÍAS RELLENO
+   ========================================== */
+.dia-relleno { opacity: 0.3 !important; filter: grayscale(1); }
+
+/* ==========================================
+   🟣 ESTADO PETICION
+   ========================================== */
+#zona-captura .estado-peticion {
+    background: #f3e8ff !important;
+    border: 1px solid #d8b4fe !important;
+    border-radius: 0.5rem !important;
+}
+.dark #zona-captura .estado-peticion {
+    background: linear-gradient(135deg, #2d1b4d 0%, #1e1b4b 100%) !important;
+    border: 1px solid #4c1d95 !important;
+}
+#zona-captura .etiqueta-peticion {
+    color: #6b21a8 !important;
+    font-weight: 800;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+}
+.dark #zona-captura .etiqueta-peticion {
+    color: #d8b4fe !important;
+    text-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+}
+
+/* ==========================================
+   💤 DESCANSO
+   ========================================== */
+#zona-captura .estado-descanso {
+    background-color: #f1f5f9 !important;
+    color: #94a3b8 !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    border: 1px dashed #cbd5e1 !important;
+}
+.dark #zona-captura .estado-descanso {
+    background-color: rgba(30, 41, 59, 0.3) !important;
+    color: #64748b !important;
+    border: 1px dashed rgba(255,255,255,0.05) !important;
+}
+
+/* ==========================================
+   ⏰ TURNOS
+   ========================================== */
+#zona-captura .turno-apertura {
+    color: #047857 !important;
+    font-weight: 800;
+    font-size: 0.65rem;
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+    background-color: #d1fae5 !important;
+}
+.dark #zona-captura .turno-apertura {
+    color: #10b981 !important;
+    background-color: rgba(16, 185, 129, 0.1) !important;
+}
+#zona-captura .turno-cierre {
+    color: #1d4ed8 !important;
+    font-weight: 800;
+    font-size: 0.65rem;
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+    background-color: #dbeafe !important;
+}
+.dark #zona-captura .turno-cierre {
+    color: #3b82f6 !important;
+    background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* ==========================================
+   🕐 TEXTO HORA
+   ========================================== */
+#zona-captura .texto-hora {
+    font-size: 0.95rem !important;
+    letter-spacing: -0.02em !important;
+    color: #374151 !important;
+    font-weight: 600 !important;
+}
+.dark #zona-captura .texto-hora {
+    color: #f8fafc !important;
+}
+
+/* ==========================================
+   📥 BOTÓN DESCARGAR
+   ========================================== */
+#btn-descargar {
+    transition: all 0.2s ease;
+}
+#btn-descargar:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
+}
+
+/* ==========================================
+   MODAL
+   ========================================== */
+#modal-empleados.hidden {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+#modal-empleados:not(.hidden) {
+    display: flex !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+}
+#modal-empleados { transition: opacity 0.3s ease-out; }

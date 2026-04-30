@@ -40,6 +40,17 @@ let mesPrincipal        = "";
 const DEPARTAMENTO_ID   = 1;
 
 
+/* const token = localStorage.getItem('token');
+const rol = localStorage.getItem('rol');
+
+if (!token) window.location.href = 'login.html';
+if (rol !== 'GERENTE' && rol !== 'ADMIN') window.location.href = 'login.html';
+*/
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("Dashboard de LuckyDev cargado correctamente.");
+    // Aquí puedes llamar funciones iniciales si lo necesitas
+});
+
 
 // ==========================================
 // 2. TEMA (DARK / LIGHT)
@@ -83,7 +94,6 @@ if (refs.btnCerrarEmpleados) {
 // 4. GESTIÓN DE EMPLEADOS
 // ==========================================
 
-// Cargar lista desde la API
 async function cargarEmpleados() {
     try {
         const res = await fetch(`http://localhost:8080/api/empleados/departamento/${DEPARTAMENTO_ID}`);
@@ -96,7 +106,6 @@ async function cargarEmpleados() {
     }
 }
 
-// Renderizar tabla de empleados
 function renderizarTablaEmpleados() {
     if (!refs.tablaEmpleadosBody) return;
 
@@ -111,14 +120,14 @@ function renderizarTablaEmpleados() {
         return;
     }
 
-    // .map().join('') en lugar de += para mejor rendimiento
     refs.tablaEmpleadosBody.innerHTML = listaEmpleados.map(emp => {
+        // ✅ FIX: la API devuelve "puesto" y "horaEntrada"/"horaSalida"
         const tieneHorarioFijo = emp.horaEntrada && emp.horaSalida;
         return `
             <tr class="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/30">
                 <td class="px-4 py-3 font-bold">${emp.nombre}</td>
                 <td class="px-4 py-3">
-                    <span class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">${emp.rol}</span>
+                    <span class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">${emp.puesto ?? '—'}</span>
                 </td>
                 <td class="px-4 py-3 text-center">
                     ${tieneHorarioFijo
@@ -132,7 +141,7 @@ function renderizarTablaEmpleados() {
     }).join('');
 }
 
-// Guardar nuevo empleado — UN SOLO listener, con todas las mejoras
+// ✅ FIX PRINCIPAL: campos corregidos para que coincidan con lo que espera Java
 if (refs.formEmpleado) {
     refs.formEmpleado.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -141,14 +150,13 @@ if (refs.formEmpleado) {
         const originalContent = btnSubmit ? btnSubmit.innerHTML : '';
 
         const nuevoEmpleado = {
-            nombre:       getEl('nombre-empleado').value.trim(),
-            rol:          getEl('rol-empleado').value,
-            horaEntrada:  getEl('entrada-fija').value || null,
-            horaSalida:   getEl('salida-fija').value || null,
-            departamento: { id: DEPARTAMENTO_ID }
+            nombre:         getEl('nombre-empleado').value.trim(),
+            puesto:         getEl('rol-empleado').value,   // ✅ "puesto" no "rol"
+            horaEntrada:    getEl('entrada-fija').value || null,
+            horaSalida:     getEl('salida-fija').value || null,
+            departamentoId: DEPARTAMENTO_ID                // ✅ "departamentoId" no {departamento:{id}}
         };
 
-        // Validación antes de tocar el servidor
         if (!nuevoEmpleado.nombre) {
             Swal.fire('Campo requerido', 'El nombre no puede estar vacío.', 'warning');
             return;
@@ -174,14 +182,13 @@ if (refs.formEmpleado) {
                     color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
                 });
                 refs.formEmpleado.reset();
-                await cargarEmpleados(); // await para evitar condición de carrera
+                await cargarEmpleados(); // await evita condición de carrera
             } else {
                 const errorData = await res.json().catch(() => ({}));
                 Swal.fire('Error del servidor', errorData.message || 'No se pudo guardar el empleado.', 'error');
             }
 
         } catch (err) {
-            // Captura errores de red / CORS
             Swal.fire('Error de Conexión', 'No puedo comunicarme con el servidor. ¿Añadiste @CrossOrigin en Java?', 'error');
         } finally {
             if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = originalContent; }
@@ -189,7 +196,6 @@ if (refs.formEmpleado) {
     });
 }
 
-// Eliminar empleado
 async function eliminarEmpleado(id) {
     const confirmacion = await Swal.fire({
         title: '¿Eliminar empleado?',
@@ -320,7 +326,7 @@ function renderizarMatrizSemanal(indiceSemana) {
     const diasDeEstaSemana = fechasUnicasMes.slice(inicio, inicio + 7);
     const hoy = new Date().toISOString().split('T')[0];
 
-    // Cabecera — .map().join('') en lugar de concatenación manual
+    // ── CABECERA ──────────────────────────────────────────────
     refs.tablaHead.innerHTML = `<tr>
         <th class="columna-empleado text-left">EMPLEADO</th>
         ${diasDeEstaSemana.map(fecha => {
@@ -331,19 +337,19 @@ function renderizarMatrizSemanal(indiceSemana) {
             return `<th class="${clases}">
                 <div class="opacity-60 mb-1 text-[10px]">${bonita.diaPalabra}</div>
                 <div class="text-sm font-bold">${bonita.fechaCorta}</div>
-                ${esHoy ? '<div class="text-[9px] font-black text-orange-500 mt-1">HOY</div>' : ''}
+                ${esHoy ? '<div class="etiqueta-hoy">HOY</div>' : ''}
             </th>`;
         }).join('')}
     </tr>`;
 
-    // Título de semana
+    // ── TÍTULO SEMANA ─────────────────────────────────────────
     if (refs.tituloSemana) {
         const primera = formatearFechaBonita(diasDeEstaSemana[0]);
         const ultima  = formatearFechaBonita(diasDeEstaSemana[diasDeEstaSemana.length - 1]);
         refs.tituloSemana.innerText = `Semana ${indiceSemana + 1} | ${primera.fechaCorta} AL ${ultima.fechaCorta}`;
     }
 
-    // Cuerpo — .map().join('') para mejor rendimiento
+    // ── CUERPO ────────────────────────────────────────────────
     refs.tablaBody.innerHTML = empleadosUnicos.map(emp => {
         const celdas = diasDeEstaSemana.map(fecha => {
             const esHoy     = fecha === hoy;
@@ -369,7 +375,7 @@ function renderizarMatrizSemanal(indiceSemana) {
                     const hIn    = turno.inicio.split('T')[1].substring(0, 5);
                     const hOut   = turno.fin.split('T')[1].substring(0, 5);
                     const claseT = turno.tipoTurno === 'APERTURA' ? 'turno-apertura' : 'turno-cierre';
-                    contenido = `<div class="flex flex-col items-center justify-center h-full">
+                    contenido = `<div class="flex flex-col items-center justify-center h-full gap-1">
                         <span class="${claseT}">${turno.tipoTurno}</span>
                         <span class="texto-hora font-medium">${hIn} — ${hOut}</span>
                     </div>`;
@@ -413,7 +419,62 @@ function formatearFechaBonita(fechaIso) {
 
 
 // ==========================================
-// 7. BANDEJA DE NOVEDADES
+// 7. 📸 DESCARGA DE IMAGEN (WhatsApp)
+// ==========================================
+
+if (refs.botonDescargar) {
+    refs.botonDescargar.addEventListener('click', async () => {
+        if (!refs.zonaCaptura) return;
+
+        const btnOriginalHTML = refs.botonDescargar.innerHTML;
+        refs.botonDescargar.innerHTML = "⏳ Generando...";
+        refs.botonDescargar.disabled = true;
+        refs.botonDescargar.style.display = 'none';
+
+        try {
+            const canvas = await html2canvas(refs.zonaCaptura, {
+                backgroundColor: refs.html.classList.contains('dark') ? '#0f1115' : '#ffffff',
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                width: refs.zonaCaptura.scrollWidth,
+                windowWidth: refs.zonaCaptura.scrollWidth + 100,
+            });
+
+            const indiceSemana = refs.selectorSemana ? parseInt(refs.selectorSemana.value) : 0;
+            const titulo = refs.tituloSemana ? refs.tituloSemana.innerText.replace(/\s+/g, '_').replace(/\|/g, '-') : `Semana_${indiceSemana + 1}`;
+            const nombreArchivo = `Horario_${titulo}.png`;
+
+            const link = document.createElement('a');
+            link.download = nombreArchivo;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+            Swal.fire({
+                icon: 'success',
+                title: '¡Imagen lista!',
+                text: `"${nombreArchivo}" descargada. ¡Lista para enviar por WhatsApp! 📲`,
+                timer: 2500,
+                showConfirmButton: false,
+                background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+            });
+
+        } catch (err) {
+            console.error("Error al generar imagen:", err);
+            Swal.fire('Error', 'No se pudo generar la imagen. Revisa la consola.', 'error');
+        } finally {
+            refs.botonDescargar.style.display = '';
+            refs.botonDescargar.innerHTML = btnOriginalHTML;
+            refs.botonDescargar.disabled = false;
+        }
+    });
+}
+
+
+
+// ==========================================
+// 8. BANDEJA DE NOVEDADES
 // ==========================================
 
 async function cargarNovedadesDesdeAPI() {
