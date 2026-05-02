@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,14 +10,15 @@
 </head>
 
 <body class="bg-[#0f1115] text-white min-h-screen">
-    
+
     <!-- Barra de navegación superior -->
     <nav class="bg-[#1a1d23] border-b border-gray-800 p-4 flex justify-between items-center shadow-lg">
         <div class="flex items-center gap-3">
             <span class="text-2xl">🛡️</span>
             <h1 class="text-xl font-black text-indigo-500 uppercase tracking-tighter">LuckyDev Admin</h1>
         </div>
-        <button onclick="Auth.logout()" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition">
+        <button onclick="Auth.logout()"
+            class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition">
             Cerrar Sesión
         </button>
     </nav>
@@ -29,7 +31,7 @@
 
         <!-- Sección de tarjetas de acción -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            
+
             <!-- FORMULARIO: REGISTRAR EMPRESA -->
             <section class="bg-[#1a1d23] p-8 rounded-2xl border border-gray-800 shadow-xl">
                 <div class="flex items-center gap-3 mb-6">
@@ -39,9 +41,11 @@
                 <form id="form-nueva-empresa" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Nombre Comercial</label>
-                        <input type="text" id="nombre-empresa" placeholder="Ej. Tienda de Ropa Lucky" class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl focus:border-indigo-500 outline-none transition">
+                        <input type="text" id="nombre-empresa" placeholder="Ej. Tienda de Ropa Lucky"
+                            class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl focus:border-indigo-500 outline-none transition">
                     </div>
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3 rounded-xl font-bold transition">
+                    <button type="button" onclick="registrarSucursal()"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 py-3 rounded-xl font-bold transition text-white">
                         Crear Nueva Sucursal
                     </button>
                 </form>
@@ -56,17 +60,22 @@
                 <form id="form-nuevo-gerente" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Empresa / Sucursal</label>
-                        <select id="select-empresa" class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl outline-none">
+                        <select id="sucursalSelect"
+                            class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl outline-none">
                             <option value="">Selecciona una empresa...</option>
                             <!-- Se llenará dinámicamente con JS -->
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Usuario para el Gerente</label>
-                        <input type="text" id="user-gerente" placeholder="Ej. gerente_lucky" class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl outline-none">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Usuario para el
+                            Gerente</label>
+                        <input type="text" id="user-gerente" placeholder="Ej. gerente_lucky"
+                            class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl outline-none">
                     </div>
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-xl font-bold transition">
+                    <button onclick="vincularGerencia()" class="btn-verde w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-xl font-bold transition">
                         Vincular Gerencia
+                    </button>
+                        
                     </button>
                 </form>
             </section>
@@ -82,4 +91,5 @@
     </script>
     <script src="js/admin.js"></script>
 </body>
+
 </html>

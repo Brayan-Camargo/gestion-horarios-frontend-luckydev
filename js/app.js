@@ -1,4 +1,12 @@
 // ==========================================
+// GUARD — protege la página (debe ir primero)
+// ==========================================
+// Descomenta estas líneas cuando el login esté funcionando:
+// Auth.checkGuard(['SUPER_ADMIN', 'ADMIN_EMPRESA', 'GERENTE']);
+// const _usuario = Auth.getUser();
+// const DEPARTAMENTO_ID = _usuario?.departamentoId ?? 1;
+
+// ==========================================
 // 1. REFERENCIAS AL DOM PROTEGIDAS
 // ==========================================
 const getEl = (id) => document.getElementById(id);
@@ -37,19 +45,8 @@ let fechasUnicasMes     = [];
 let empleadosUnicos     = [];
 let novedadesPendientes = [];
 let mesPrincipal        = "";
-const DEPARTAMENTO_ID   = 1;
+const DEPARTAMENTO_ID   = 1; // ← cuando actives el guard, reemplaza por _usuario?.departamentoId ?? 1
 
-
-/* const token = localStorage.getItem('token');
-const rol = localStorage.getItem('rol');
-
-if (!token) window.location.href = 'login.html';
-if (rol !== 'GERENTE' && rol !== 'ADMIN') window.location.href = 'login.html';
-*/
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("Dashboard de LuckyDev cargado correctamente.");
-    // Aquí puedes llamar funciones iniciales si lo necesitas
-});
 
 
 // ==========================================
@@ -96,7 +93,8 @@ if (refs.btnCerrarEmpleados) {
 
 async function cargarEmpleados() {
     try {
-        const res = await fetch(`http://localhost:8080/api/empleados/departamento/${DEPARTAMENTO_ID}`);
+        // ✅ Auth.apiFetch envía el token JWT automáticamente
+        const res = await Auth.apiFetch(`/api/empleados/departamento/${DEPARTAMENTO_ID}`);
         if (!res.ok) throw new Error('Error al obtener empleados');
         listaEmpleados = await res.json();
         renderizarTablaEmpleados();
@@ -121,7 +119,6 @@ function renderizarTablaEmpleados() {
     }
 
     refs.tablaEmpleadosBody.innerHTML = listaEmpleados.map(emp => {
-        // ✅ FIX: la API devuelve "puesto" y "horaEntrada"/"horaSalida"
         const tieneHorarioFijo = emp.horaEntrada && emp.horaSalida;
         return `
             <tr class="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/30">
@@ -141,7 +138,6 @@ function renderizarTablaEmpleados() {
     }).join('');
 }
 
-// ✅ FIX PRINCIPAL: campos corregidos para que coincidan con lo que espera Java
 if (refs.formEmpleado) {
     refs.formEmpleado.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -151,10 +147,10 @@ if (refs.formEmpleado) {
 
         const nuevoEmpleado = {
             nombre:         getEl('nombre-empleado').value.trim(),
-            puesto:         getEl('rol-empleado').value,   // ✅ "puesto" no "rol"
+            puesto:         getEl('rol-empleado').value,
             horaEntrada:    getEl('entrada-fija').value || null,
             horaSalida:     getEl('salida-fija').value || null,
-            departamentoId: DEPARTAMENTO_ID                // ✅ "departamentoId" no {departamento:{id}}
+            departamentoId: DEPARTAMENTO_ID
         };
 
         if (!nuevoEmpleado.nombre) {
@@ -165,9 +161,9 @@ if (refs.formEmpleado) {
         try {
             if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = "Guardando..."; }
 
-            const res = await fetch('http://localhost:8080/api/empleados', {
+            // ✅ Auth.apiFetch en lugar de fetch directo
+            const res = await Auth.apiFetch('/api/empleados', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(nuevoEmpleado)
             });
 
@@ -182,14 +178,16 @@ if (refs.formEmpleado) {
                     color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
                 });
                 refs.formEmpleado.reset();
-                await cargarEmpleados(); // await evita condición de carrera
+                await cargarEmpleados();
             } else {
                 const errorData = await res.json().catch(() => ({}));
                 Swal.fire('Error del servidor', errorData.message || 'No se pudo guardar el empleado.', 'error');
             }
 
         } catch (err) {
-            Swal.fire('Error de Conexión', 'No puedo comunicarme con el servidor. ¿Añadiste @CrossOrigin en Java?', 'error');
+            if (err.message !== 'Sesión expirada') {
+                Swal.fire('Error de Conexión', 'No puedo comunicarme con el servidor.', 'error');
+            }
         } finally {
             if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = originalContent; }
         }
@@ -212,12 +210,15 @@ async function eliminarEmpleado(id) {
     if (!confirmacion.isConfirmed) return;
 
     try {
-        const res = await fetch(`http://localhost:8080/api/empleados/${id}`, { method: 'DELETE' });
+        // ✅ Auth.apiFetch en lugar de fetch directo
+        const res = await Auth.apiFetch(`/api/empleados/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('El servidor no pudo eliminar al empleado');
         await cargarEmpleados();
         Swal.fire({ title: 'Eliminado', text: 'El empleado ha sido removido.', icon: 'success', timer: 1500, showConfirmButton: false });
     } catch (error) {
-        Swal.fire('Error', error.message || 'No se pudo eliminar al empleado', 'error');
+        if (error.message !== 'Sesión expirada') {
+            Swal.fire('Error', error.message || 'No se pudo eliminar al empleado', 'error');
+        }
     }
 }
 
@@ -255,7 +256,8 @@ if (refs.botonGenerar) {
         refs.botonGenerar.disabled = true;
 
         try {
-            const respuesta = await fetch('http://localhost:8080/api/horarios/generar/1?mes=4&anio=2026', { method: 'POST' });
+            // ✅ Auth.apiFetch
+            const respuesta = await Auth.apiFetch('/api/horarios/generar/1?mes=4&anio=2026', { method: 'POST' });
             if (!respuesta.ok) throw new Error('Error al generar el horario.');
 
             const textoRespuesta = await respuesta.text();
@@ -268,7 +270,9 @@ if (refs.botonGenerar) {
             if (refs.botonProbar) refs.botonProbar.click();
 
         } catch (error) {
-            Swal.fire('Error', error.message, 'error');
+            if (error.message !== 'Sesión expirada') {
+                Swal.fire('Error', error.message, 'error');
+            }
         } finally {
             refs.botonGenerar.innerText = "⚙️ Generar Nuevo Mes";
             refs.botonGenerar.disabled = false;
@@ -281,7 +285,8 @@ if (refs.botonProbar) {
         refs.botonProbar.innerText = "Cargando...";
 
         try {
-            const respuesta = await fetch('http://localhost:8080/api/horarios/1');
+            // ✅ Auth.apiFetch
+            const respuesta = await Auth.apiFetch('/api/horarios/1');
             if (!respuesta.ok) throw new Error('Error en el servidor');
             datosGlobales = await respuesta.json();
 
@@ -303,7 +308,9 @@ if (refs.botonProbar) {
             renderizarMatrizSemanal(0);
 
         } catch (error) {
-            alert("❌ Error: " + error.message);
+            if (error.message !== 'Sesión expirada') {
+                alert("❌ Error: " + error.message);
+            }
         } finally {
             if (datosGlobales.length > 0) refs.botonProbar.innerText = "Actualizar Datos";
         }
@@ -326,7 +333,6 @@ function renderizarMatrizSemanal(indiceSemana) {
     const diasDeEstaSemana = fechasUnicasMes.slice(inicio, inicio + 7);
     const hoy = new Date().toISOString().split('T')[0];
 
-    // ── CABECERA ──────────────────────────────────────────────
     refs.tablaHead.innerHTML = `<tr>
         <th class="columna-empleado text-left">EMPLEADO</th>
         ${diasDeEstaSemana.map(fecha => {
@@ -342,14 +348,12 @@ function renderizarMatrizSemanal(indiceSemana) {
         }).join('')}
     </tr>`;
 
-    // ── TÍTULO SEMANA ─────────────────────────────────────────
     if (refs.tituloSemana) {
         const primera = formatearFechaBonita(diasDeEstaSemana[0]);
         const ultima  = formatearFechaBonita(diasDeEstaSemana[diasDeEstaSemana.length - 1]);
         refs.tituloSemana.innerText = `Semana ${indiceSemana + 1} | ${primera.fechaCorta} AL ${ultima.fechaCorta}`;
     }
 
-    // ── CUERPO ────────────────────────────────────────────────
     refs.tablaBody.innerHTML = empleadosUnicos.map(emp => {
         const celdas = diasDeEstaSemana.map(fecha => {
             const esHoy     = fecha === hoy;
@@ -479,10 +483,12 @@ if (refs.botonDescargar) {
 
 async function cargarNovedadesDesdeAPI() {
     try {
-        const respuesta = await fetch(`http://localhost:8080/api/novedades/pendientes/${DEPARTAMENTO_ID}`);
-        if (!respuesta.ok) throw new Error('Error al conectar con la bandeja de novedades');
+        // ✅ FIX: URL correcta de novedades + variable "respuesta" renombrada a "res"
+        const res = await Auth.apiFetch(`/api/novedades/pendientes/${DEPARTAMENTO_ID}`);
+        if (!res.ok) throw new Error('Error al conectar con la bandeja de novedades');
 
-        const datos = await respuesta.json();
+        // ✅ FIX: renombrado "respuesta" → "res" de forma consistente
+        const datos = await res.json();
         novedadesPendientes = datos.map(n => ({
             id:          n.id,
             empleado:    n.empleado.nombre,
@@ -573,12 +579,15 @@ function renderizarNovedades() {
 
 async function aprobarNovedad(id) {
     try {
-        const respuesta = await fetch(`http://localhost:8080/api/novedades/${id}/aprobar`, { method: 'PUT' });
-        if (!respuesta.ok) throw new Error('No se pudo procesar la aprobación');
+        // ✅ Auth.apiFetch
+        const res = await Auth.apiFetch(`/api/novedades/${id}/aprobar`, { method: 'PUT' });
+        if (!res.ok) throw new Error('No se pudo procesar la aprobación');
         Swal.fire({ title: 'Aprobada', text: 'La petición ha sido aceptada.', icon: 'success', timer: 2000, showConfirmButton: false });
         cargarNovedadesDesdeAPI();
     } catch (error) {
-        Swal.fire('Error', error.message, 'error');
+        if (error.message !== 'Sesión expirada') {
+            Swal.fire('Error', error.message, 'error');
+        }
     }
 }
 
@@ -596,12 +605,15 @@ async function rechazarNovedad(id) {
     if (!confirmacion.isConfirmed) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:8080/api/novedades/${id}/rechazar`, { method: 'DELETE' });
-        if (!respuesta.ok) throw new Error('No se pudo eliminar la petición');
+        // ✅ Auth.apiFetch
+        const res = await Auth.apiFetch(`/api/novedades/${id}/rechazar`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('No se pudo eliminar la petición');
         Swal.fire('Eliminada', 'Petición rechazada con éxito.', 'success');
         cargarNovedadesDesdeAPI();
     } catch (error) {
-        Swal.fire('Error', error.message, 'error');
+        if (error.message !== 'Sesión expirada') {
+            Swal.fire('Error', error.message, 'error');
+        }
     }
 }
 
