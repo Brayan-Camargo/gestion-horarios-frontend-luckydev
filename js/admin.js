@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // FUNCIÓN 1: Cargar Sucursales
 async function cargarSucursales() {
     try {
-    
+
         const token = localStorage.getItem("lucky_token");
 
         const response = await fetch('http://localhost:8080/api/admin/listar-sucursales', {
@@ -38,17 +38,31 @@ async function cargarSucursales() {
 
         const data = await response.json();
         console.log("Sucursales cargadas exitosamente:", data);
-        
-        // ... (Aquí irá tu lógica para pintar las sucursales en el select HTML) ...
+
+        // 👇 ESTE ES EL CÓDIGO QUE FALTA PARA DIBUJAR EN PANTALLA 👇
+        const selectEmpresa = document.querySelector('select');
+
+        if (selectEmpresa && data.length > 0) {
+            // 1. Limpiamos las opciones (por si se ejecuta dos veces)
+            selectEmpresa.innerHTML = '<option value="">Selecciona una empresa...</option>';
+
+            // 2. Recorremos los datos que llegaron de Java
+            data.forEach(sucursal => {
+                const opcion = document.createElement('option');
+                opcion.value = sucursal.id;          // El ID oculto que se manda al backend
+                opcion.textContent = sucursal.nombre; // El texto visible para ti
+                selectEmpresa.appendChild(opcion);
+            });
+        }
 
     } catch (error) {
-        console.error("Error cargando sucursales (Revisa tu backend):", error);
+        console.error("Error cargando sucursales:", error);
     }
 }
 
 // FUNCIÓN 2: Registrar Nueva Sucursal
 async function registrarSucursal() {
-    const boton = document.querySelector('.btn-azul');
+    const boton = document.querySelector('button[onclick="registrarSucursal()"]');
     const input = document.querySelector('input[placeholder="Ej. Tienda de Ropa Lucky"]');
     const nombreSucursal = input ? input.value.trim() : "";
 
@@ -57,8 +71,10 @@ async function registrarSucursal() {
         return;
     }
 
-    boton.disabled = true;
-    boton.textContent = "Registrando...";
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "Registrando...";
+    }
 
     try {
         // ✅ USANDO LA LLAVE CORRECTA DE LA IMAGEN
@@ -93,7 +109,7 @@ async function registrarSucursal() {
 async function vincularGerencia() {
     const deptoId = document.querySelector('select').value;
     const username = document.querySelector('input[placeholder*="gerente"]').value;
-    
+
     // ✅ USANDO LA LLAVE CORRECTA DE LA IMAGEN
     const token = localStorage.getItem('lucky_token');
 
