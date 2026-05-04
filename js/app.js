@@ -145,12 +145,36 @@ if (refs.formEmpleado) {
         const btnSubmit = refs.formEmpleado.querySelector('button[type="submit"]');
         const originalContent = btnSubmit ? btnSubmit.innerHTML : '';
 
+        // 1. Capturamos los datos de tus inputs
+        const nombreVal = getEl('nombre-empleado').value.trim();
+        const rolVal = getEl('rol-empleado').value;
+        const entradaVal = getEl('entrada-fija').value;
+        const salidaVal = getEl('salida-fija').value;
+
+        // 2. Validación UX (Bandeja de plata): Si llena uno, debe llenar el otro
+        if ((entradaVal && !salidaVal) || (!entradaVal && salidaVal)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Horario incompleto',
+                text: 'Si el empleado tiene horario fijo, debes asignar la Entrada y la Salida. Si es rotativo, deja ambos en blanco.',
+                background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+            });
+            return;
+        }
+
+        // 3. Deducimos automáticamente el checkbox basándonos en si hay horas
+        const tieneHorarioFijo = (entradaVal !== '' && salidaVal !== '');
+
+        // 4. Empaquetamos exactamente como lo pide el DTO de Java
         const nuevoEmpleado = {
-            nombre:         getEl('nombre-empleado').value.trim(),
-            puesto:         getEl('rol-empleado').value,
-            horaEntrada:    getEl('entrada-fija').value || null,
-            horaSalida:     getEl('salida-fija').value || null,
-            departamentoId: DEPARTAMENTO_ID
+            nombre: nombreVal,
+            rol: rolVal, 
+            tieneHorarioFijo: tieneHorarioFijo,
+            // Agregamos :00 para que Java reciba los segundos y no marque error
+            horaInicioDisponibilidad: entradaVal ? entradaVal + ":00" : null,
+            horaFinDisponibilidad: salidaVal ? salidaVal + ":00" : null,
+            departamentoId: DEPARTAMENTO_ID 
         };
 
         if (!nuevoEmpleado.nombre) {
@@ -161,7 +185,7 @@ if (refs.formEmpleado) {
         try {
             if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = "Guardando..."; }
 
-            // ✅ Auth.apiFetch en lugar de fetch directo
+            // Usamos tu super Auth.apiFetch
             const res = await Auth.apiFetch('/api/empleados', {
                 method: 'POST',
                 body: JSON.stringify(nuevoEmpleado)
@@ -171,17 +195,17 @@ if (refs.formEmpleado) {
                 Swal.fire({
                     icon: 'success',
                     title: '¡Añadido!',
-                    text: `${nuevoEmpleado.nombre} se ha unido al equipo.`,
-                    timer: 1500,
+                    text: `${nuevoEmpleado.nombre} se ha unido al equipo. (El usuario y contraseña están en tu consola de Java)`,
+                    timer: 3500,
                     showConfirmButton: false,
                     background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
                     color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
                 });
                 refs.formEmpleado.reset();
-                await cargarEmpleados();
+                await cargarEmpleados(); // Recargamos la tabla al instante
             } else {
                 const errorData = await res.json().catch(() => ({}));
-                Swal.fire('Error del servidor', errorData.message || 'No se pudo guardar el empleado.', 'error');
+                Swal.fire('Error del servidor', errorData.error || errorData.message || 'No se pudo guardar el empleado.', 'error');
             }
 
         } catch (err) {
