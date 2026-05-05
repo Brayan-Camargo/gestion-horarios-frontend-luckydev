@@ -18,6 +18,7 @@ const refs = {
     botonProbar:         getEl('btn-probar'),
     botonGenerar:        getEl('btn-generar'),
     botonDescargar:      getEl('btn-descargar'),
+    botonRecalcular: getEl('btn-recalcular'), 
     selectorSemana:      getEl('selector-semana'),
     zonaCaptura:         getEl('zona-captura'),
     tablaHead:           getEl('tabla-head'),
@@ -120,9 +121,28 @@ function renderizarTablaEmpleados() {
 
     refs.tablaEmpleadosBody.innerHTML = listaEmpleados.map(emp => {
         const tieneHorarioFijo = emp.horaEntrada && emp.horaSalida;
+        
+        // 🚀 NUEVO: Mostramos las billeteras del empleado
+        const score = emp.scorePuntos || 0;
+        const minutos = emp.minutosDeuda || 0;
+        const horas = (minutos / 60).toFixed(1);
+        
+        let badgeBanco = '';
+        if (minutos > 0) {
+            badgeBanco = `<span class="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold" title="Horas acumuladas a su favor">⏱️ +${horas} hrs</span>`;
+        } else if (minutos < 0) {
+            badgeBanco = `<span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold" title="Horas que le debe a la tienda">⏱️ Debe ${Math.abs(horas)} hrs</span>`;
+        }
+
         return `
             <tr class="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                <td class="px-4 py-3 font-bold">${emp.nombre}</td>
+                <td class="px-4 py-3 font-bold">
+                    ${emp.nombre}
+                    <div class="mt-1 flex gap-2">
+                        <span class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold" title="Puntos Score">🪙 ${score} pts</span>
+                        ${badgeBanco}
+                    </div>
+                </td>
                 <td class="px-4 py-3">
                     <span class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">${emp.puesto ?? '—'}</span>
                 </td>
@@ -280,8 +300,14 @@ if (refs.botonGenerar) {
         refs.botonGenerar.disabled = true;
 
         try {
-            // ✅ Auth.apiFetch
-            const respuesta = await Auth.apiFetch('/api/horarios/generar/1?mes=4&anio=2026', { method: 'POST' });
+            // ✅ 1. Obtenemos el mes y año actuales dinámicamente
+            const ahora = new Date();
+            const mesActual = ahora.getMonth() + 1; // getMonth() empieza en 0, por eso sumamos 1
+            const anioActual = ahora.getFullYear();
+
+            // ✅ 2. Se lo pasamos a la URL usando template literals (comillas invertidas)
+            const respuesta = await Auth.apiFetch(`/api/horarios/generar/1?mes=${mesActual}&anio=${anioActual}`, { method: 'POST' });
+            
             if (!respuesta.ok) throw new Error('Error al generar el horario.');
 
             const textoRespuesta = await respuesta.text();
@@ -302,6 +328,58 @@ if (refs.botonGenerar) {
             refs.botonGenerar.disabled = false;
         }
     });
+    if (refs.botonRecalcular) {
+    refs.botonRecalcular.addEventListener('click', async () => {
+        const { isConfirmed } = await Swal.fire({
+            title: '🚨 ¿Recalcular desde Hoy?',
+            html: `Esto borrará los turnos futuros a partir de hoy y los volverá a calcular.<br><br>
+                   <b>Úsalo solo si aprobaste una petición tardía o registraste una incapacidad médica.</b>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#4b5563',
+            confirmButtonText: 'Sí, recalcular',
+            cancelButtonText: 'Cancelar',
+            background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
+            color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+        });
+
+        if (!isConfirmed) return;
+
+        refs.botonRecalcular.innerHTML = "⏳ Recalculando...";
+        refs.botonRecalcular.disabled = true;
+
+        try {
+            // ✅ Llamamos al nuevo endpoint de emergencia
+            const respuesta = await Auth.apiFetch(`/api/horarios/regenerar-emergencia/${DEPARTAMENTO_ID}`, { method: 'POST' });
+            
+            if (!respuesta.ok) throw new Error('Error al recalcular el horario.');
+
+            const textoRespuesta = await respuesta.text();
+            
+            Swal.fire({
+                title: '¡Operación Exitosa!', 
+                text: textoRespuesta, 
+                icon: 'success',
+                timer: 2500,
+                showConfirmButton: false,
+                background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+            });
+            
+            // Recargamos los datos en la tabla automáticamente
+            if (refs.botonProbar) refs.botonProbar.click();
+
+        } catch (error) {
+            if (error.message !== 'Sesión expirada') {
+                Swal.fire('Error', error.message, 'error');
+            }
+        } finally {
+            refs.botonRecalcular.innerHTML = "<span>🚨</span> Recalcular desde Hoy";
+            refs.botonRecalcular.disabled = false;
+        }
+    });
+}
 }
 
 if (refs.botonProbar) {
@@ -309,34 +387,67 @@ if (refs.botonProbar) {
         refs.botonProbar.innerText = "Cargando...";
 
         try {
-            // ✅ Auth.apiFetch
+            // 1. Traemos todo el historial de la base de datos
             const respuesta = await Auth.apiFetch('/api/horarios/1');
             if (!respuesta.ok) throw new Error('Error en el servidor');
-            datosGlobales = await respuesta.json();
+            let todosLosDatos = await respuesta.json();
 
-            if (datosGlobales.length === 0) {
+            if (todosLosDatos.length === 0) {
                 alert("⚠️ No hay horarios generados aún. Haz clic en 'Generar Nuevo Mes'.");
-                refs.botonProbar.innerText = "Cargar Mes";
+                refs.botonProbar.innerText = "Actualizar Datos";
                 return;
             }
 
-            fechasUnicasMes = [...new Set(datosGlobales.map(d => d.inicio.split('T')[0]))].sort();
+            // ✅ 2. Detectamos el mes y año en curso dinámicamente
+            const ahora = new Date();
+            const mesActual = String(ahora.getMonth() + 1).padStart(2, '0');
+            const anioActual = String(ahora.getFullYear());
+
+            mesPrincipal = mesActual; // ¡Esto arregla el problema de los días grises!
+
+            // ✅ 3. Filtramos para quedarnos solo con las semanas de ESTE mes
+            const fechasTotales = [...new Set(todosLosDatos.map(d => d.inicio.split('T')[0]))].sort();
+            const fechasDelMes = fechasTotales.filter(f => f.startsWith(`${anioActual}-${mesActual}`));
+
+            if (fechasDelMes.length > 0) {
+                // Calculamos el inicio de la primera semana y el fin de la última semana del mes
+                const indexInicio = fechasTotales.indexOf(fechasDelMes[0]);
+                const indexFin = fechasTotales.indexOf(fechasDelMes[fechasDelMes.length - 1]);
+
+                const inicioSemana = indexInicio - (indexInicio % 7);
+                const finSemana = indexFin + (6 - (indexFin % 7));
+
+                fechasUnicasMes = fechasTotales.slice(inicioSemana, finSemana + 1);
+                datosGlobales = todosLosDatos.filter(d => fechasUnicasMes.includes(d.inicio.split('T')[0]));
+            } else {
+                // Por si el gerente quiere ver un mes que no es el actual (se deja por seguridad)
+                datosGlobales = todosLosDatos;
+                fechasUnicasMes = fechasTotales;
+            }
+
             empleadosUnicos = [...new Set(datosGlobales.map(d => d.nombreEmpleado))].sort();
-            mesPrincipal    = fechasUnicasMes[Math.floor(fechasUnicasMes.length / 2)].split('-')[1];
 
             configurarSelectorSemanas();
             if (refs.selectorSemana) refs.selectorSemana.classList.remove('hidden');
             if (refs.zonaCaptura)    refs.zonaCaptura.classList.remove('hidden');
             if (refs.botonDescargar) refs.botonDescargar.classList.remove('hidden');
 
-            renderizarMatrizSemanal(0);
+            // ✅ MAGIA UX: Auto-seleccionar la semana en la que estamos HOY
+            const hoyIso = ahora.toISOString().split('T')[0];
+            const indexHoy = fechasUnicasMes.indexOf(hoyIso);
+            const semanaASeleccionar = indexHoy !== -1 ? Math.floor(indexHoy / 7) : 0;
+
+            if (refs.selectorSemana) refs.selectorSemana.value = semanaASeleccionar;
+            
+            // Renderizamos la semana auto-detectada
+            renderizarMatrizSemanal(semanaASeleccionar);
 
         } catch (error) {
             if (error.message !== 'Sesión expirada') {
                 alert("❌ Error: " + error.message);
             }
         } finally {
-            if (datosGlobales.length > 0) refs.botonProbar.innerText = "Actualizar Datos";
+            if (datosGlobales && datosGlobales.length > 0) refs.botonProbar.innerText = "Actualizar Datos";
         }
     });
 }
@@ -507,15 +618,16 @@ if (refs.botonDescargar) {
 
 async function cargarNovedadesDesdeAPI() {
     try {
-        // ✅ FIX: URL correcta de novedades + variable "respuesta" renombrada a "res"
         const res = await Auth.apiFetch(`/api/novedades/pendientes/${DEPARTAMENTO_ID}`);
         if (!res.ok) throw new Error('Error al conectar con la bandeja de novedades');
 
-        // ✅ FIX: renombrado "respuesta" → "res" de forma consistente
         const datos = await res.json();
         novedadesPendientes = datos.map(n => ({
             id:          n.id,
             empleado:    n.empleado.nombre,
+            score:       n.empleado.scorePuntos || 0,
+            minutos:     n.empleado.minutosDeuda || 0, // 🚀 NUEVO: Traemos el banco de horas
+            aceptadas:   n.empleado.peticionesAceptadasMes || 0,
             tipo:        n.tipo,
             inicio:      n.fechaInicio,
             fin:         n.fechaFin,
@@ -565,20 +677,53 @@ function renderizarNovedades() {
     }
 
     refs.tablaNovedadesBody.innerHTML = novedadesPendientes.map(nov => {
-        let colorPrioridad, textoPrioridad, botonesAccion;
+        let colorPrioridad, textoPrioridad, botonesAccion, insigniaScore = '';
+        
+        // Detectamos si es un cobro del banco de horas
+        const esCobroHoras = nov.tipo === 'PERMISO_ESPECIAL' && nov.observacion.includes('BANCO_HORAS');
 
         if (nov.prioridad === 5) {
-            colorPrioridad = "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 border-red-200 dark:border-red-800";
-            textoPrioridad = "🚨 EMERGENCIA (Bloqueo Automático)";
-            botonesAccion  = `<button onclick="aprobarNovedad(${nov.id})" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-3 py-1 rounded font-bold transition">Enterado</button>`;
-        } else if (nov.prioridad >= 3) {
-            colorPrioridad = "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200 dark:border-amber-800";
-            textoPrioridad = "⭐ ALTA (Derecho / Permiso)";
-            botonesAccion  = generarBotonesAprobacion(nov.id);
-        } else {
-            colorPrioridad = "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 border-blue-200 dark:border-blue-800";
-            textoPrioridad = "💡 BAJA (Preferencia)";
-            botonesAccion  = generarBotonesAprobacion(nov.id);
+            colorPrioridad = "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 border-red-200";
+            textoPrioridad = "🚨 EMERGENCIA (Inamovible)";
+            botonesAccion  = `<button onclick="aprobarNovedad(${nov.id})" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white px-3 py-1 rounded font-bold transition">Enterado</button>`;
+        } 
+        else if (esCobroHoras) {
+            // 🏦 ECONOMÍA DE MINUTOS (Banco de Horas)
+            const costoMins = 480; // 8 Horas
+            const horasFavor = (nov.minutos / 60).toFixed(1);
+            const puedePagar = nov.minutos >= costoMins;
+            
+            colorPrioridad = "bg-purple-100 text-purple-700 border-purple-200";
+            textoPrioridad = "⏱️ COBRO DE HORAS";
+            
+            insigniaScore = `
+                <div class="mt-2 text-[10px] font-bold ${puedePagar ? 'text-purple-600' : 'text-red-500'}">
+                    ⏱️ Banco de Horas: ${horasFavor} hrs a favor (Costo: -8 hrs)
+                    <br><span class="${!puedePagar ? 'text-red-600 bg-red-100 px-1 rounded' : 'text-gray-400 font-normal'}">
+                        ${!puedePagar ? '¡Alerta! El empleado no tiene horas suficientes' : 'Aprobación limpia y justa'}
+                    </span>
+                </div>
+            `;
+            botonesAccion = generarBotonesAprobacion(nov.id);
+        } 
+        else {
+            // 💰 ECONOMÍA DE PUNTOS (Score normal)
+            const costo = 50;
+            const saldoResultante = nov.score - costo;
+            const generaDeuda = saldoResultante < 0;
+
+            colorPrioridad = nov.prioridad >= 3 ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-blue-100 text-blue-700 border-blue-200";
+            textoPrioridad = nov.prioridad >= 3 ? "⭐ ALTA (Permiso)" : "💡 BAJA (Preferencia)";
+            
+            insigniaScore = `
+                <div class="mt-2 text-[10px] font-bold ${generaDeuda ? 'text-red-500' : 'text-emerald-500'}">
+                    🪙 Score Actual: ${nov.score} pts (Costo: -${costo})
+                    <br><span class="${generaDeuda ? 'text-red-600 bg-red-100 px-1 rounded' : 'text-gray-400 font-normal'}">
+                        ${generaDeuda ? `¡OJO! Lo enviarás a deuda: ${saldoResultante} pts` : `Quedarán ${saldoResultante} pts`}
+                    </span>
+                </div>
+            `;
+            botonesAccion = generarBotonesAprobacion(nov.id);
         }
 
         return `
@@ -586,6 +731,7 @@ function renderizarNovedades() {
                 <td class="px-6 py-4">
                     <div class="font-bold text-gray-800 dark:text-white">${nov.empleado}</div>
                     <div class="text-xs text-gray-500 italic mt-1">"${nov.observacion}"</div>
+                    ${insigniaScore}
                 </td>
                 <td class="px-6 py-4">
                     <div class="font-bold text-[11px] tracking-wider text-gray-500 dark:text-gray-400 uppercase">${nov.tipo}</div>
