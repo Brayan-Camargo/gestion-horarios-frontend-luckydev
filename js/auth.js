@@ -1,40 +1,28 @@
-checkGuard: (rolesPermitidos) => {
-    const user = Auth.getUser(); 
-    
-    // 👇 AÑADE ESTAS DOS LÍNEAS 👇
-    console.log("Rol del usuario en LocalStorage:", user ? user.rol : "No hay usuario");
-    console.log("Rol esperado por el sistema:", Auth.LEVELS.SUPER_ADMIN);
-
-    if (!user) {
-        window.location.href = "login.html";
-        return false;
-    }
-
-    if (user.rol === Auth.LEVELS.SUPER_ADMIN) return true;
-}
-
 const Auth = {
+    // 1. Mapeo de roles exacto al Enum de Java
     LEVELS: {
         SUPER_ADMIN:   'SUPER_ADMIN',   
         ADMIN_EMPRESA: 'ADMIN_EMPRESA', 
-        GERENTE:       'GERENTE',       
+        GERENTE:       'GERENTE', 
+        SUB_GERENTE:   'SUB_GERENTE',
+        ENCARGADO:     'ENCARGADO',      
         EMPLEADO:      'EMPLEADO'       
     },
 
-    // Obtiene los datos del usuario logueado
+    // 2. Obtiene los datos del usuario logueado
     getUser: () => {
         const user = localStorage.getItem("lucky_user");
         return user ? JSON.parse(user) : null;
     },
 
-    // ✅ FIX 1: Solo UN logout (había dos definidos, el segundo pisaba al primero)
+    // 3. Un solo logout limpio
     logout: () => {
         localStorage.removeItem("lucky_user");
         localStorage.removeItem("lucky_token");
         window.location.href = 'login.html';
     },
 
-    // LOGIN — conecta con Java y guarda la sesión
+    // 4. LOGIN — conecta con Java
     login: async (username, password) => {
         try {
             const response = await fetch('http://localhost:8080/api/auth/login', {
@@ -53,21 +41,16 @@ const Auth = {
                 };
 
                 localStorage.setItem("lucky_user",  JSON.stringify(userData));
-                // ✅ FIX 2: Guardar el token por separado para que apiFetch lo lea fácil
                 localStorage.setItem("lucky_token", data.jwToken);
 
-                // ✅ FIX 3: Redirigir según el rol que devuelve Java
-                if (data.rol === Auth.LEVELS.SUPER_ADMIN) {
-                    window.location.href = 'admin.html';
-                } else {
-                    window.location.href = 'index.html';
-                }
-
+                // ✅ CORRECCIÓN: Quitamos el window.location.href de aquí.
+                // Tu archivo 'login.js' ya se encarga de redirigir correctamente.
                 return { success: true, rol: data.rol };
 
             } else {
-                const err = await response.json().catch(() => ({}));
-                return { success: false, message: err.message || 'Credenciales inválidas' };
+                // El backend devuelve un texto en caso de 401, no un JSON
+                const errText = await response.text();
+                return { success: false, message: errText || 'Credenciales inválidas' };
             }
 
         } catch (error) {
@@ -76,16 +59,19 @@ const Auth = {
         }
     },
 
-    // Guardián de rutas — llámalo al inicio de cada página protegida
+    // 5. Guardián de rutas — protege tus páginas HTML
     checkGuard: (rolesPermitidos) => {
-        const user = Auth.getUser(); // ✅ FIX 4: usar getUser() en vez de duplicar el parse
+        const user = Auth.getUser();
+
+        console.log("Rol del usuario en LocalStorage:", user ? user.rol : "No hay usuario");
+        console.log("Roles permitidos en esta página:", rolesPermitidos);
 
         if (!user) {
             window.location.href = "login.html";
             return false;
         }
 
-        // SUPER_ADMIN pasa siempre
+        // SUPER_ADMIN tiene acceso a todo
         if (user.rol === Auth.LEVELS.SUPER_ADMIN) return true;
 
         if (!rolesPermitidos.includes(user.rol)) {
@@ -101,8 +87,7 @@ const Auth = {
         return true;
     },
 
-    // ✅ Fetch autenticado — agrega el token JWT automáticamente en cada petición
-    // Reemplaza fetch() normal en app.js con Auth.apiFetch()
+    // 6. Fetch autenticado — inyecta el token automáticamente
     apiFetch: async (endpoint, opciones = {}) => {
         const token = localStorage.getItem("lucky_token");
 
@@ -115,7 +100,7 @@ const Auth = {
             }
         });
 
-        // Si Java responde 401 = token expirado → cerrar sesión automáticamente
+        // Si Java responde 401 = token modificado o expirado → cerrar sesión por seguridad
         if (res.status === 401) {
             Auth.logout();
             throw new Error('Sesión expirada');

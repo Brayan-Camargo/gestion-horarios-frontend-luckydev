@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuckyDev - Mi Horario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+
+<body class="bg-[#0f1115] text-white min-h-screen flex flex-col">
+
+    <!-- BARRA DE NAVEGACIÓN -->
+    <nav class="bg-[#1a1d23] border-b border-gray-800 p-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🕒</span>
+            <h1 class="text-xl font-black text-indigo-500 uppercase tracking-tighter">Panel de Empleado</h1>
+        </div>
+        <button onclick="Auth.logout()"
+            class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition">
+            Salir
+        </button>
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-grow flex flex-col items-center justify-center p-6 text-center">
+        <div class="bg-[#1a1d23] p-10 rounded-3xl border border-gray-800 shadow-2xl max-w-lg w-full">
+            <div class="text-6xl mb-6">👋</div>
+            <h2 class="text-3xl font-black mb-2 text-indigo-400"></h2>
+            <p class="text-gray-400 mb-8">Bienvenido a tu panel de control. Aquí podrás ver tus turnos asignados y
+                solicitar permisos.</p>
+
+            <div class="grid gap-4">
+                <button id="btn-ver-horario"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition shadow-lg w-full">
+                    📅 Ver mi horario de esta semana
+                </button>
+                <button id="btn-solicitar"
+                    class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-4 rounded-xl transition border border-gray-700 w-full">
+                    ✉️ Solicitar Permiso
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 1. Librerías Externas -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- 2. Lógica Core de Autenticación -->
+    <script src="js/auth.js"></script>
+    
+    <!-- 3. Lógica centralizada de esta pantalla -->
+    <script src="js/checador.js"></script>
+
+</body>
+
+</html>

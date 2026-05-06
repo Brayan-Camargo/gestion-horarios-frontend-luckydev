@@ -11,16 +11,26 @@
 
 <body class="bg-[#0f1115] text-white min-h-screen">
 
+    
     <!-- Barra de navegación superior -->
     <nav class="bg-[#1a1d23] border-b border-gray-800 p-4 flex justify-between items-center shadow-lg">
         <div class="flex items-center gap-3">
             <span class="text-2xl">🛡️</span>
             <h1 class="text-xl font-black text-indigo-500 uppercase tracking-tighter">LuckyDev Admin</h1>
         </div>
-        <button onclick="Auth.logout()"
-            class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition">
-            Cerrar Sesión
-        </button>
+        
+        <!-- Botones de navegación para el Super Admin -->
+        <div class="flex items-center gap-4">
+            <button onclick="window.location.href='index.html'" class="text-gray-400 hover:text-indigo-400 text-sm font-bold transition">
+                Ir a Dashboard
+            </button>
+            <button onclick="window.location.href='checador.html'" class="text-gray-400 hover:text-indigo-400 text-sm font-bold transition">
+                Ir a Checador
+            </button>
+            <button onclick="Auth.logout()" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition">
+                Cerrar Sesión
+            </button>
+        </div>
     </nav>
 
     <main class="p-6 max-w-6xl mx-auto">
