@@ -138,7 +138,8 @@ body { font-family: 'Inter', sans-serif !important; }
     background-color: #f1f5f9 !important;
     color: #1e293b !important;
     border: 1px solid #e2e8f0 !important;
-    padding: 1rem !important;
+    padding: 0.5rem !important; /* ✅ MÁS COMPACTO */
+    font-size: 0.8rem !important; /* ✅ LETRA ADAPTADA */
     font-weight: 700 !important;
 }
 
@@ -155,8 +156,8 @@ body { font-family: 'Inter', sans-serif !important; }
    ========================================== */
 #zona-captura td {
     border: 1px solid #e2e8f0 !important;
-    height: 7rem !important;
-    padding: 0.5rem !important;
+    height: 4rem !important; /* ✅ ALTURA PERFECTA PARA PANTALLA COMPLETA */
+    padding: 0.25rem !important; /* ✅ MENOS ESPACIO MUERTO */
     background-color: #ffffff !important;
     color: #1e293b !important;
 }

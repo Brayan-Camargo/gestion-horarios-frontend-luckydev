@@ -41,6 +41,44 @@
                     <span id="badge-novedades"
                         class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center"></span>
                 </button>
+                <button onclick="window.location.href='checador.html'"
+                    class="flex items-center gap-2 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white px-4 py-2 rounded-xl border border-indigo-500/20 transition-all font-bold text-sm">
+                    ⏱️ Mi Checador
+                </button>
+                <button id="btn-pase-lista"
+                    class="flex items-center gap-2 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white px-4 py-2 rounded-xl border border-emerald-500/20 transition-all font-bold text-sm">
+                    📋 Pase de Lista
+                </button>
+                <div id="modal-validar-empleado"
+                    class="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 hidden opacity-0 transition-all duration-300">
+                    <div class="bg-[#1a1d23] w-full max-w-sm rounded-2xl p-6 border border-emerald-500/30 text-center">
+                        <div class="text-4xl mb-4">🔐</div>
+                        <h3 id="validar-nombre-label" class="text-xl font-bold text-white mb-2">Confirmar Identidad</h3>
+                        <p class="text-gray-400 text-[10px] mb-6 uppercase tracking-widest">Ingresa tu clave personal
+                        </p>
+
+                        <form id="form-confirmar-asistencia" onsubmit="return false;">
+    
+    <!-- ✅ AGREGA ESTA LÍNEA — resuelve el warning sin cambiar el diseño -->
+    <input type="text" autocomplete="username" 
+           style="display:none" 
+           aria-hidden="true">
+
+    <input type="password" id="pass-validacion" placeholder="Contraseña"
+        autocomplete="current-password"
+        class="w-full bg-[#0f1115] border border-gray-700 p-3 rounded-xl text-center text-xl text-emerald-400 outline-none focus:border-emerald-500 mb-6">
+
+    <div class="flex gap-3">
+        <button type="button" onclick="cerrarValidacion()"
+            class="flex-1 text-gray-500 font-bold text-xs hover:text-white transition-colors">CANCELAR</button>
+        <button type="submit"
+            class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl shadow-lg shadow-emerald-500/20 transition-all transform active:scale-95">
+            CONFIRMAR
+        </button>
+    </div>
+</form>
+                    </div>
+                </div>
                 <button id="btn-probar"
                     class="bg-gray-800 dark:bg-gray-700 text-white py-2 px-4 rounded-lg">Cargar</button>
                 <button id="btn-recalcular"
@@ -78,8 +116,8 @@
             <p class="swipe-hint">← Desliza para ver todos los días →</p>
 
             <!-- Wrapper con scroll horizontal en móvil -->
-            <div class="tabla-scroll-wrapper">
-                <table class="w-full border-collapse">
+            <div class="tabla-scroll-wrapper overflow-x-auto w-full border border-gray-800 rounded-xl">
+                <table class="w-full text-xs text-center border-collapse">
                     <thead id="tabla-head"></thead>
                     <tbody id="tabla-body" class="divide-y dark:divide-gray-800"></tbody>
                 </table>
@@ -204,6 +242,22 @@
                     class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-6 py-2 rounded-lg font-bold transition">
                     Cerrar
                 </button>
+            </div>
+        </div>
+    </div>
+    <div id="modal-pase-lista"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden opacity-0 transition-all duration-300">
+        <div
+            class="bg-white dark:bg-[#1a1d23] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-300">
+            <div
+                class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                <h2 class="text-xl font-bold flex items-center gap-2 text-emerald-500">📋 Asistencia de Hoy</h2>
+                <button id="btn-cerrar-lista"
+                    class="text-gray-400 hover:text-red-500 transition-colors text-2xl">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[70vh]">
+                <div id="lista-empleados-hoy" class="flex flex-col gap-3">
+                </div>
             </div>
         </div>
     </div>

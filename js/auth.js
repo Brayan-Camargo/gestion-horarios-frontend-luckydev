@@ -63,20 +63,23 @@ const Auth = {
     checkGuard: (rolesPermitidos) => {
         const user = Auth.getUser();
 
-        console.log("Rol del usuario en LocalStorage:", user ? user.rol : "No hay usuario");
-        console.log("Roles permitidos en esta página:", rolesPermitidos);
-
         if (!user) {
             window.location.href = "login.html";
             return false;
         }
 
-        // SUPER_ADMIN tiene acceso a todo
+        // SUPER_ADMIN tiene llave maestra
         if (user.rol === Auth.LEVELS.SUPER_ADMIN) return true;
 
-        if (!rolesPermitidos.includes(user.rol)) {
-            alert("Acceso denegado: No tienes los permisos necesarios.");
-            if (user.rol === Auth.LEVELS.EMPLEADO) {
+        // Limpiamos los roles para evitar errores de comparación
+        const rolUsuario = user.rol.trim().toUpperCase();
+        // Convertimos el array de permitidos a Mayúsculas también
+        const listaPermitida = rolesPermitidos.map(r => r.trim().toUpperCase());
+
+        if (!listaPermitida.includes(rolUsuario)) {
+            alert("Acceso denegado: Tu rango (" + rolUsuario + ") no tiene permiso aquí.");
+            // Redirección inteligente:
+            if (rolUsuario === 'EMPLEADO' || rolUsuario === 'VENDEDOR') {
                 window.location.href = "checador.html";
             } else {
                 window.location.href = "index.html";

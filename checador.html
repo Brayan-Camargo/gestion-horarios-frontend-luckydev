@@ -8,6 +8,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="js/auth.js"></script> 
+    <script>
+    Auth.checkGuard([
+        Auth.LEVELS.EMPLEADO,  
+        Auth.LEVELS.ENCARGADO, 
+        Auth.LEVELS.SUB_GERENTE, 
+        Auth.LEVELS.GERENTE, 
+        Auth.LEVELS.ADMIN_EMPRESA,
+        Auth.LEVELS.SUPER_ADMIN
+    ]);
+</script>
 </head>
 
 <body class="bg-[#0f1115] text-white min-h-screen flex flex-col">
@@ -32,6 +43,35 @@
             <p class="text-gray-400 mb-8">Bienvenido a tu panel de control. Aquí podrás ver tus turnos asignados y
                 solicitar permisos.</p>
 
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-[#0f1115] border border-gray-800 rounded-xl p-4 text-center shadow-inner">
+                    <p class="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Tu Score</p>
+                    <p id="stat-score" class="text-4xl font-black text-indigo-400">--</p>
+                    <p class="text-[10px] text-gray-600 mt-1 font-bold">PUNTOS</p>
+                </div>
+                <div class="bg-[#0f1115] border border-gray-800 rounded-xl p-4 text-center shadow-inner">
+                    <p class="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Banco de Horas</p>
+                    <p id="stat-deuda" class="text-4xl font-black text-emerald-400">--</p>
+                    <p class="text-[10px] text-gray-600 mt-1 font-bold">MINUTOS A FAVOR</p>
+                </div>
+            </div>
+
+                <div class="bg-[#0f1115] border border-gray-800 rounded-2xl p-6 mb-8 shadow-inner">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Hora Actual</p>
+                <div id="reloj-digital" class="text-5xl md:text-7xl font-black text-white tracking-tighter mb-6" style="font-variant-numeric: tabular-nums;">
+                    00:00:00
+                </div>
+                
+                <div class="flex gap-4 justify-center">
+                    <button id="btn-checkin" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl transition shadow-lg shadow-emerald-900/50 border border-emerald-500/50 uppercase tracking-wide">
+                        Entrada
+                    </button>
+                    <button id="btn-checkout" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-black py-4 rounded-xl transition shadow-lg shadow-rose-900/50 border border-rose-500/50 uppercase tracking-wide">
+                        Salida
+                    </button>
+                </div>
+            </div>
+
             <div class="grid gap-4">
                 <button id="btn-ver-horario"
                     class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition shadow-lg w-full">
@@ -48,10 +88,7 @@
     <!-- 1. Librerías Externas -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
-    <!-- 2. Lógica Core de Autenticación -->
-    <script src="js/auth.js"></script>
-    
-    <!-- 3. Lógica centralizada de esta pantalla -->
+    <!-- 2. Lógica centralizada de esta pantalla -->
     <script src="js/checador.js"></script>
 
 </body>

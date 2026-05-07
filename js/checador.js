@@ -1,8 +1,14 @@
 // ==========================================
 // 1. EL CANDADO PROTECTOR (Se ejecuta de inmediato)
 // ==========================================
-Auth.checkGuard([Auth.LEVELS.EMPLEADO, Auth.LEVELS.SUPER_ADMIN]);
-
+/*Auth.checkGuard([
+        Auth.LEVELS.EMPLEADO,  
+        Auth.LEVELS.ENCARGADO, 
+        Auth.LEVELS.SUB_GERENTE, 
+        Auth.LEVELS.GERENTE, 
+        Auth.LEVELS.ADMIN_EMPRESA,
+        Auth.LEVELS.SUPER_ADMIN]);
+*/
 
 // ==========================================
 // 2. CARGA DE LA INTERFAZ
@@ -40,6 +46,11 @@ async function verMiHorario() {
         
         const nombreUsuarioLimpio = usuario.nombre.toLowerCase().replace(/[0-9]/g, ''); 
         const misTurnos = todosLosTurnos.filter(t => t.nombreEmpleado.toLowerCase().replace(/\s+/g, '') === nombreUsuarioLimpio);
+
+        if (misTurnos.length > 0) {
+            const empleadoId = misTurnos[0].empleadoId;
+            cargarEstadisticas(empleadoId);
+        }
 
         // LA MAGIA PARA SINCRONIZAR LA SEMANA ACTUAL
         const hoy = new Date();
@@ -240,5 +251,201 @@ async function abrirFormularioPermiso() {
         } catch (error) {
             Swal.fire('Error de conexión', 'Falló la comunicación con el servidor', 'error');
         }
+    }
+}
+
+// ==========================================
+// 4. MÓDULO RELOJ CHECADOR
+// ==========================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    iniciarReloj();
+    inicializarDatosEmpleado();
+    
+    // --- AQUÍ VA EL BLOQUE DE SEGURIDAD VISUAL ---
+    const usuario = Auth.getUser();
+    const btnEntrada = document.getElementById('btn-checkin');
+    const btnSalida = document.getElementById('btn-checkout');
+
+    // Si es un empleado normal o vendedor, le quitamos los botones para que no cheque desde casa
+    if (usuario && (usuario.rol === Auth.LEVELS.EMPLEADO || usuario.rol === Auth.LEVELS.VENDEDOR)) {
+        if(btnEntrada) btnEntrada.style.display = 'none';
+        if(btnSalida) btnSalida.style.display = 'none';
+        
+        const contenedorHora = document.querySelector('.hora-actual');
+        if (contenedorHora) {
+            contenedorHora.innerHTML += `<p class="text-[10px] text-amber-500 mt-2 font-bold uppercase tracking-wider">Asistencia controlada por Gerencia</p>`;
+        }
+    }
+
+    const btnCheckIn = document.getElementById('btn-checkin');
+    const btnCheckOut = document.getElementById('btn-checkout');
+    if (btnCheckIn) btnCheckIn.addEventListener('click', () => registrarAsistencia('check-in'));
+    if (btnCheckOut) btnCheckOut.addEventListener('click', () => registrarAsistencia('check-out'));
+});
+
+async function inicializarDatosEmpleado() {
+    try {
+        const usuario = Auth.getUser();
+        const nombreUsuarioLimpio = usuario.nombre.toLowerCase().replace(/[0-9]/g, '');
+
+        const resHorarios = await Auth.apiFetch('/api/horarios/1');
+        if (resHorarios.ok) {
+            const todosLosTurnos = await resHorarios.json();
+            const misTurnos = todosLosTurnos.filter(t => t.nombreEmpleado.toLowerCase().replace(/\s+/g, '') === nombreUsuarioLimpio);
+
+            if (misTurnos.length > 0) {
+                // Sacamos su ID y cargamos sus números mágicos
+                const empleadoId = misTurnos[0].empleadoId;
+                cargarEstadisticas(empleadoId);
+            }
+        }
+    } catch (error) {
+        console.error("Error al inicializar datos:", error);
+    }
+}
+
+// A. Reloj Digital en Tiempo Real
+function iniciarReloj() {
+    const elementoReloj = document.getElementById('reloj-digital');
+    if (!elementoReloj) return;
+
+    setInterval(() => {
+        const ahora = new Date();
+        // Formato de 24 horas exacto
+        elementoReloj.innerText = ahora.toLocaleTimeString('es-MX', { 
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false 
+        });
+    }, 1000);
+}
+
+// B. Enviar la Checada al Backend
+async function registrarAsistencia(tipoEndpoint) {
+    const btnCheckIn = document.getElementById('btn-checkin');
+    const btnCheckOut = document.getElementById('btn-checkout');
+    if (btnCheckIn) btnCheckIn.disabled = true;
+    if (btnCheckOut) btnCheckOut.disabled = true;
+
+    try {
+        // 1. Necesitamos saber quién es y cuál es su turno de hoy
+        const usuario = Auth.getUser();
+        const nombreUsuarioLimpio = usuario.nombre.toLowerCase().replace(/[0-9]/g, ''); 
+
+        // Traemos los turnos para buscar el de HOY
+        const resHorarios = await Auth.apiFetch('/api/horarios/1');
+        if (!resHorarios.ok) throw new Error('No se pudo cargar tu horario para verificar el turno.');
+        
+        const todosLosTurnos = await resHorarios.json();
+        
+        const hoyIso = new Date().toISOString().split('T')[0]; // Ej: "2026-05-06"
+        
+        // Buscamos el turno que le toca HOY a este empleado
+        const turnoDeHoy = todosLosTurnos.find(t => 
+            t.nombreEmpleado.toLowerCase().replace(/\s+/g, '') === nombreUsuarioLimpio &&
+            t.inicio.startsWith(hoyIso)
+        );
+
+        if (!turnoDeHoy) {
+            Swal.fire('Sin turno hoy', 'No tienes un turno programado para el día de hoy, no puedes checar.', 'warning');
+            return;
+        }
+
+        // 2. Ejecutamos la petición POST a tu AsistenciaController
+        // Nota: Como parche temporal, usamos el ID del turno de hoy, y asumiremos el empleadoId según el turno
+        const empleadoId = turnoDeHoy.empleadoId; // Asumiendo que tu backend devuelve el empleadoId en el turno
+        const turnoId = turnoDeHoy.id;
+
+        const resAsistencia = await Auth.apiFetch(`/api/asistencia/${tipoEndpoint}?empleadoId=${empleadoId}&turnoId=${turnoId}`, {
+            method: 'POST'
+        });
+
+        if (resAsistencia.ok) {
+            const data = await resAsistencia.json();
+            
+            // Evaluamos el estado que calculó tu Java
+            let icono = 'success';
+            let mensaje = 'Registrado exitosamente.';
+            
+            if (data.estado === 'RETARDO') {
+                icono = 'warning';
+                mensaje = 'Tu entrada fue registrada con retardo. Se han descontado puntos de tu score.';
+            } else if (data.estado === 'TEMPRANO') {
+                icono = 'warning';
+                mensaje = 'Registraste tu salida antes de tiempo. Se ha notificado al gerente.';
+            } else if (data.estado === 'HORAS_EXTRA_PENDIENTES') {
+                icono = 'info';
+                mensaje = 'Tu salida ha sido registrada. Tus horas extra están pendientes de aprobación.';
+            }
+
+            Swal.fire({
+                icon: icono,
+                title: tipoEndpoint === 'check-in' ? '¡Check-In Exitoso!' : '¡Check-Out Exitoso!',
+                text: mensaje,
+                background: '#1a1d23', color: '#ffffff', confirmButtonColor: '#10b981'
+            });
+
+            cargarEstadisticas(empleadoId);
+
+        } else {
+            const errorData = await resAsistencia.json();
+            Swal.fire('Error', errorData.error || 'No se pudo registrar la asistencia.', 'error');
+        }
+
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Error de conexión', 'No pudimos comunicarnos con el servidor.', 'error');
+    } finally {
+        // 2. Volvemos a encender los botones siempre, falle o tenga éxito
+        if (btnCheckIn) btnCheckIn.disabled = false;
+        if (btnCheckOut) btnCheckOut.disabled = false;
+    }
+}
+
+// C. Consultar Estadísticas del Empleado (Versión Universal SaaS)
+async function cargarEstadisticas(empleadoId) {
+    try {
+        const res = await Auth.apiFetch(`/api/asistencia/stats/${empleadoId}`);
+        if (res.ok) {
+            const data = await res.json();
+            
+            const elementoScore = document.getElementById('stat-score');
+            const elementoDeuda = document.getElementById('stat-deuda');
+            const textoDeuda = elementoDeuda.nextElementSibling; 
+
+            // Actualizamos el Score
+            if (elementoScore) elementoScore.innerText = data.scorePuntos;
+
+            // Actualizamos la Deuda (Universal: Horas y Minutos)
+            if (elementoDeuda) {
+                const totalMinutos = Math.abs(data.minutosDeuda);
+                
+                // Matemática simple y universal
+                const horas = Math.floor(totalMinutos / 60);
+                const minutos = totalMinutos % 60;
+                
+                let textoFormateado = "";
+                if (horas > 0) textoFormateado += `${horas}h `;
+                textoFormateado += `${minutos}m`;
+
+                // Si está en ceros
+                if (totalMinutos === 0) textoFormateado = "0h 0m";
+
+                elementoDeuda.innerText = textoFormateado;
+                
+                // Colores dinámicos
+                if (data.minutosDeuda < 0) {
+                    elementoDeuda.className = "text-4xl font-black text-rose-500";
+                    textoDeuda.innerText = "TIEMPO EN CONTRA";
+                } else if (data.minutosDeuda > 0) {
+                    elementoDeuda.className = "text-4xl font-black text-emerald-400";
+                    textoDeuda.innerText = "TIEMPO A FAVOR";
+                } else {
+                    elementoDeuda.className = "text-4xl font-black text-gray-400";
+                    textoDeuda.innerText = "TABLAS";
+                }
+            }
+        }
+    } catch (error) {
+        console.error("No se pudieron cargar las estadísticas", error);
     }
 }

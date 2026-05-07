@@ -1,57 +1,76 @@
 // ==========================================
-// GUARD — protege la página (debe ir primero)
+// GUARD — protege la página
 // ==========================================
-// Descomenta estas líneas cuando el login esté funcionando:
-// Auth.checkGuard(['SUPER_ADMIN', 'ADMIN_EMPRESA', 'GERENTE']);
-// const _usuario = Auth.getUser();
-// const DEPARTAMENTO_ID = _usuario?.departamentoId ?? 1;
+// Descomenta cuando el login esté funcionando:
+// Auth.checkGuard([Auth.LEVELS.SUB_GERENTE, Auth.LEVELS.GERENTE, Auth.LEVELS.ADMIN_EMPRESA, Auth.LEVELS.SUPER_ADMIN]);
 
 // ==========================================
-// 1. REFERENCIAS AL DOM PROTEGIDAS
+// 1. REFERENCIAS AL DOM Y ESTADO
 // ==========================================
+const _usuario = Auth.getUser();
 const getEl = (id) => document.getElementById(id);
 
 const refs = {
-    btnTema:             getEl('btn-tema'),
-    html:                document.documentElement,
-    iconoTema:           getEl('icono-tema'),
-    botonProbar:         getEl('btn-probar'),
-    botonGenerar:        getEl('btn-generar'),
-    botonDescargar:      getEl('btn-descargar'),
-    botonRecalcular: getEl('btn-recalcular'), 
-    selectorSemana:      getEl('selector-semana'),
-    zonaCaptura:         getEl('zona-captura'),
-    tablaHead:           getEl('tabla-head'),
-    tablaBody:           getEl('tabla-body'),
-    tituloSemana:        getEl('titulo-semana'),
+    btnTema: getEl('btn-tema'),
+    html: document.documentElement,
+    iconoTema: getEl('icono-tema'),
+    botonProbar: getEl('btn-probar'),
+    botonGenerar: getEl('btn-generar'),
+    botonDescargar: getEl('btn-descargar'),
+    botonRecalcular: getEl('btn-recalcular'),
+    selectorSemana: getEl('selector-semana'),
+    zonaCaptura: getEl('zona-captura'),
+    tablaHead: getEl('tabla-head'),
+    tablaBody: getEl('tabla-body'),
+    tituloSemana: getEl('titulo-semana'),
     // Modal Empleados
     btnGestionarEmpleados: getEl('btn-gestionar-empleados'),
-    modalEmpleados:        getEl('modal-empleados'),
-    btnCerrarEmpleados:    getEl('btn-cerrar-empleados'),
-    tablaEmpleadosBody:    getEl('tabla-empleados-body'),
-    formEmpleado:          getEl('form-nuevo-empleado'),
+    modalEmpleados: getEl('modal-empleados'),
+    btnCerrarEmpleados: getEl('btn-cerrar-empleados'),
+    tablaEmpleadosBody: getEl('tabla-empleados-body'),
+    formEmpleado: getEl('form-nuevo-empleado'),
     // Modal Novedades
-    btnNovedades:          getEl('btn-novedades'),
-    modalNovedades:        getEl('modal-novedades'),
-    btnCerrarModal:        getEl('btn-cerrar-modal'),
-    btnCerrarModalFooter:  getEl('btn-cerrar-modal-footer'),
-    tablaNovedadesBody:    getEl('tabla-novedades-body'),
-    badgeNovedades:        getEl('badge-novedades'),
+    btnNovedades: getEl('btn-novedades'),
+    modalNovedades: getEl('modal-novedades'),
+    btnCerrarModal: getEl('btn-cerrar-modal'),
+    btnCerrarModalFooter: getEl('btn-cerrar-modal-footer'),
+    tablaNovedadesBody: getEl('tabla-novedades-body'),
+    badgeNovedades: getEl('badge-novedades'),
+    // Pase de lista
+    btnPaseLista: getEl('btn-pase-lista'),
+    modalPaseLista: getEl('modal-pase-lista'),
+    btnCerrarLista: getEl('btn-cerrar-lista'),
+    contenedorListaHoy: getEl('lista-empleados-hoy'),
+    formConfirmarAsistencia: getEl('form-confirmar-asistencia'),
 };
 
-// Variables de Estado
-let datosGlobales       = [];
-let listaEmpleados      = [];
-let fechasUnicasMes     = [];
-let empleadosUnicos     = [];
+// Variables de Estado — declaradas UNA sola vez
+let datosGlobales = [];
+let listaEmpleados = [];
+let fechasUnicasMes = [];
+let empleadosUnicos = [];
 let novedadesPendientes = [];
-let mesPrincipal        = "";
-const DEPARTAMENTO_ID   = 1; // ← cuando actives el guard, reemplaza por _usuario?.departamentoId ?? 1
+let mesPrincipal = "";
+let asistenciaPendiente = null;
+
+const DEPARTAMENTO_ID = _usuario?.departamentoId ?? 1;
 
 
 
 // ==========================================
-// 2. TEMA (DARK / LIGHT)
+// 2. INICIALIZACIÓN
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Listener del formulario de validación de asistencia (evita error de null)
+    if (refs.formConfirmarAsistencia) {
+        refs.formConfirmarAsistencia.addEventListener('submit', ejecutarValidacionYRegistro);
+    }
+});
+
+
+
+// ==========================================
+// 3. TEMA (DARK / LIGHT)
 // ==========================================
 if (refs.btnTema) {
     refs.btnTema.addEventListener('click', () => {
@@ -65,36 +84,59 @@ if (refs.btnTema) {
 
 
 // ==========================================
-// 3. MODAL EMPLEADOS — ABRIR / CERRAR
+// 4. MODALES — ABRIR / CERRAR
 // ==========================================
-if (refs.btnGestionarEmpleados) {
-    refs.btnGestionarEmpleados.addEventListener('click', () => {
-        refs.modalEmpleados.classList.remove('hidden');
+
+// Función genérica reutilizable para todos los modales (doc 10)
+const toggleModalGenerico = (modal) => {
+    if (!modal) return;
+    if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
         setTimeout(() => {
-            refs.modalEmpleados.classList.replace('opacity-0', 'opacity-100');
-            refs.modalEmpleados.querySelector('div').classList.replace('scale-95', 'scale-100');
+            modal.classList.replace('opacity-0', 'opacity-100');
+            modal.querySelector('div').classList.replace('scale-95', 'scale-100');
         }, 10);
-        cargarEmpleados();
-    });
+    } else {
+        modal.classList.replace('opacity-100', 'opacity-0');
+        modal.querySelector('div').classList.replace('scale-100', 'scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+};
+
+// Modal Novedades — toggle propio porque también carga datos
+function toggleModalNovedades() {
+    if (!refs.modalNovedades) return;
+    if (refs.modalNovedades.classList.contains('hidden')) {
+        refs.modalNovedades.classList.remove('hidden');
+        setTimeout(() => {
+            refs.modalNovedades.classList.remove('opacity-0');
+            refs.modalNovedades.children[0].classList.remove('scale-95');
+        }, 10);
+        cargarNovedadesDesdeAPI();
+    } else {
+        refs.modalNovedades.classList.add('opacity-0');
+        refs.modalNovedades.children[0].classList.add('scale-95');
+        setTimeout(() => refs.modalNovedades.classList.add('hidden'), 300);
+    }
 }
 
-if (refs.btnCerrarEmpleados) {
-    refs.btnCerrarEmpleados.addEventListener('click', () => {
-        refs.modalEmpleados.classList.replace('opacity-100', 'opacity-0');
-        refs.modalEmpleados.querySelector('div').classList.replace('scale-100', 'scale-95');
-        setTimeout(() => refs.modalEmpleados.classList.add('hidden'), 300);
-    });
-}
+// Listeners de modales
+if (refs.btnGestionarEmpleados) refs.btnGestionarEmpleados.addEventListener('click', () => { toggleModalGenerico(refs.modalEmpleados); cargarEmpleados(); });
+if (refs.btnCerrarEmpleados) refs.btnCerrarEmpleados.addEventListener('click', () => toggleModalGenerico(refs.modalEmpleados));
+if (refs.btnNovedades) refs.btnNovedades.addEventListener('click', toggleModalNovedades);
+if (refs.btnCerrarModal) refs.btnCerrarModal.addEventListener('click', toggleModalNovedades);
+if (refs.btnCerrarModalFooter) refs.btnCerrarModalFooter.addEventListener('click', toggleModalNovedades);
+if (refs.btnPaseLista) refs.btnPaseLista.addEventListener('click', () => { toggleModalGenerico(refs.modalPaseLista); renderizarPaseDeLista(); });
+if (refs.btnCerrarLista) refs.btnCerrarLista.addEventListener('click', () => toggleModalGenerico(refs.modalPaseLista));
 
 
 
 // ==========================================
-// 4. GESTIÓN DE EMPLEADOS
+// 5. GESTIÓN DE EMPLEADOS
 // ==========================================
 
 async function cargarEmpleados() {
     try {
-        // ✅ Auth.apiFetch envía el token JWT automáticamente
         const res = await Auth.apiFetch(`/api/empleados/departamento/${DEPARTAMENTO_ID}`);
         if (!res.ok) throw new Error('Error al obtener empleados');
         listaEmpleados = await res.json();
@@ -121,17 +163,15 @@ function renderizarTablaEmpleados() {
 
     refs.tablaEmpleadosBody.innerHTML = listaEmpleados.map(emp => {
         const tieneHorarioFijo = emp.horaEntrada && emp.horaSalida;
-        
-        // 🚀 NUEVO: Mostramos las billeteras del empleado
         const score = emp.scorePuntos || 0;
         const minutos = emp.minutosDeuda || 0;
         const horas = (minutos / 60).toFixed(1);
-        
+
         let badgeBanco = '';
         if (minutos > 0) {
-            badgeBanco = `<span class="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold" title="Horas acumuladas a su favor">⏱️ +${horas} hrs</span>`;
+            badgeBanco = `<span class="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold" title="Horas a favor">⏱️ +${horas} hrs</span>`;
         } else if (minutos < 0) {
-            badgeBanco = `<span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold" title="Horas que le debe a la tienda">⏱️ Debe ${Math.abs(horas)} hrs</span>`;
+            badgeBanco = `<span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold" title="Horas que debe">⏱️ Debe ${Math.abs(horas)} hrs</span>`;
         }
 
         return `
@@ -139,7 +179,7 @@ function renderizarTablaEmpleados() {
                 <td class="px-4 py-3 font-bold">
                     ${emp.nombre}
                     <div class="mt-1 flex gap-2">
-                        <span class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold" title="Puntos Score">🪙 ${score} pts</span>
+                        <span class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold">🪙 ${score} pts</span>
                         ${badgeBanco}
                     </div>
                 </td>
@@ -148,8 +188,8 @@ function renderizarTablaEmpleados() {
                 </td>
                 <td class="px-4 py-3 text-center">
                     ${tieneHorarioFijo
-                        ? `<span class="text-indigo-500 font-mono text-xs">${emp.horaEntrada} - ${emp.horaSalida}</span>`
-                        : '<span class="opacity-30">Rotativo</span>'}
+                ? `<span class="text-indigo-500 font-mono text-xs">${emp.horaEntrada} - ${emp.horaSalida}</span>`
+                : '<span class="opacity-30">Rotativo</span>'}
                 </td>
                 <td class="px-4 py-3 text-right">
                     <button onclick="eliminarEmpleado(${emp.id})" class="text-red-400 hover:text-red-600 p-2 transition">🗑️</button>
@@ -158,6 +198,7 @@ function renderizarTablaEmpleados() {
     }).join('');
 }
 
+// Guardar nuevo empleado
 if (refs.formEmpleado) {
     refs.formEmpleado.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -165,36 +206,32 @@ if (refs.formEmpleado) {
         const btnSubmit = refs.formEmpleado.querySelector('button[type="submit"]');
         const originalContent = btnSubmit ? btnSubmit.innerHTML : '';
 
-        // 1. Capturamos los datos de tus inputs
         const nombreVal = getEl('nombre-empleado').value.trim();
         const rolVal = getEl('rol-empleado').value;
         const entradaVal = getEl('entrada-fija').value;
         const salidaVal = getEl('salida-fija').value;
 
-        // 2. Validación UX (Bandeja de plata): Si llena uno, debe llenar el otro
+        // Validación: si llenan uno, deben llenar el otro
         if ((entradaVal && !salidaVal) || (!entradaVal && salidaVal)) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Horario incompleto',
-                text: 'Si el empleado tiene horario fijo, debes asignar la Entrada y la Salida. Si es rotativo, deja ambos en blanco.',
+                text: 'Si el empleado tiene horario fijo debes asignar Entrada y Salida. Si es rotativo, deja ambos en blanco.',
                 background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+                color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
             });
             return;
         }
 
-        // 3. Deducimos automáticamente el checkbox basándonos en si hay horas
-        const tieneHorarioFijo = (entradaVal !== '' && salidaVal !== '');
+        const tieneHorarioFijo = entradaVal !== '' && salidaVal !== '';
 
-        // 4. Empaquetamos exactamente como lo pide el DTO de Java
         const nuevoEmpleado = {
             nombre: nombreVal,
-            rol: rolVal, 
+            rol: rolVal,
             tieneHorarioFijo: tieneHorarioFijo,
-            // Agregamos :00 para que Java reciba los segundos y no marque error
             horaInicioDisponibilidad: entradaVal ? entradaVal + ":00" : null,
             horaFinDisponibilidad: salidaVal ? salidaVal + ":00" : null,
-            departamentoId: DEPARTAMENTO_ID 
+            departamentoId: DEPARTAMENTO_ID
         };
 
         if (!nuevoEmpleado.nombre) {
@@ -205,7 +242,6 @@ if (refs.formEmpleado) {
         try {
             if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = "Guardando..."; }
 
-            // Usamos tu super Auth.apiFetch
             const res = await Auth.apiFetch('/api/empleados', {
                 method: 'POST',
                 body: JSON.stringify(nuevoEmpleado)
@@ -215,14 +251,14 @@ if (refs.formEmpleado) {
                 Swal.fire({
                     icon: 'success',
                     title: '¡Añadido!',
-                    text: `${nuevoEmpleado.nombre} se ha unido al equipo. (El usuario y contraseña están en tu consola de Java)`,
+                    text: `${nuevoEmpleado.nombre} se ha unido al equipo.`,
                     timer: 3500,
                     showConfirmButton: false,
                     background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                    color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+                    color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
                 });
                 refs.formEmpleado.reset();
-                await cargarEmpleados(); // Recargamos la tabla al instante
+                await cargarEmpleados();
             } else {
                 const errorData = await res.json().catch(() => ({}));
                 Swal.fire('Error del servidor', errorData.error || errorData.message || 'No se pudo guardar el empleado.', 'error');
@@ -248,13 +284,12 @@ async function eliminarEmpleado(id) {
         confirmButtonText: 'Sí, eliminar',
         cancelButtonText: 'Cancelar',
         background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-        color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+        color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
     });
 
     if (!confirmacion.isConfirmed) return;
 
     try {
-        // ✅ Auth.apiFetch en lugar de fetch directo
         const res = await Auth.apiFetch(`/api/empleados/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('El servidor no pudo eliminar al empleado');
         await cargarEmpleados();
@@ -269,7 +304,7 @@ async function eliminarEmpleado(id) {
 
 
 // ==========================================
-// 5. MOTOR DE GENERACIÓN Y CARGA DE HORARIOS
+// 6. MOTOR DE GENERACIÓN Y CARGA DE HORARIOS
 // ==========================================
 
 if (refs.botonGenerar) {
@@ -288,7 +323,7 @@ if (refs.botonGenerar) {
                 confirmButtonText: 'Sí, regenerar horario',
                 cancelButtonText: 'Cancelar',
                 background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+                color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
                 inputValidator: (value) => {
                     if (value !== 'CONFIRMAR') return 'Debes escribir CONFIRMAR exactamente en mayúsculas.';
                 }
@@ -300,35 +335,32 @@ if (refs.botonGenerar) {
         refs.botonGenerar.disabled = true;
 
         try {
-            // ✅ 1. Obtenemos el mes y año actuales dinámicamente
             const ahora = new Date();
-            const mesActual = ahora.getMonth() + 1; // getMonth() empieza en 0, por eso sumamos 1
+            const mesActual = ahora.getMonth() + 1;
             const anioActual = ahora.getFullYear();
 
-            // ✅ 2. Se lo pasamos a la URL usando template literals (comillas invertidas)
-            const respuesta = await Auth.apiFetch(`/api/horarios/generar/1?mes=${mesActual}&anio=${anioActual}`, { method: 'POST' });
-            
+            const respuesta = await Auth.apiFetch(`/api/horarios/generar/${DEPARTAMENTO_ID}?mes=${mesActual}&anio=${anioActual}`, { method: 'POST' });
             if (!respuesta.ok) throw new Error('Error al generar el horario.');
 
             const textoRespuesta = await respuesta.text();
             Swal.fire({
                 title: '¡Listo!', text: textoRespuesta, icon: 'success',
                 background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+                color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
                 confirmButtonColor: '#10b981'
             });
             if (refs.botonProbar) refs.botonProbar.click();
 
         } catch (error) {
-            if (error.message !== 'Sesión expirada') {
-                Swal.fire('Error', error.message, 'error');
-            }
+            if (error.message !== 'Sesión expirada') Swal.fire('Error', error.message, 'error');
         } finally {
             refs.botonGenerar.innerText = "⚙️ Generar Nuevo Mes";
             refs.botonGenerar.disabled = false;
         }
     });
-    if (refs.botonRecalcular) {
+}
+
+if (refs.botonRecalcular) {
     refs.botonRecalcular.addEventListener('click', async () => {
         const { isConfirmed } = await Swal.fire({
             title: '🚨 ¿Recalcular desde Hoy?',
@@ -341,7 +373,7 @@ if (refs.botonGenerar) {
             confirmButtonText: 'Sí, recalcular',
             cancelButtonText: 'Cancelar',
             background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-            color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+            color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
         });
 
         if (!isConfirmed) return;
@@ -350,36 +382,24 @@ if (refs.botonGenerar) {
         refs.botonRecalcular.disabled = true;
 
         try {
-            // ✅ Llamamos al nuevo endpoint de emergencia
             const respuesta = await Auth.apiFetch(`/api/horarios/regenerar-emergencia/${DEPARTAMENTO_ID}`, { method: 'POST' });
-            
             if (!respuesta.ok) throw new Error('Error al recalcular el horario.');
 
-            const textoRespuesta = await respuesta.text();
-            
             Swal.fire({
-                title: '¡Operación Exitosa!', 
-                text: textoRespuesta, 
-                icon: 'success',
-                timer: 2500,
-                showConfirmButton: false,
+                title: '¡Operación Exitosa!', text: await respuesta.text(), icon: 'success',
+                timer: 2500, showConfirmButton: false,
                 background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+                color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
             });
-            
-            // Recargamos los datos en la tabla automáticamente
             if (refs.botonProbar) refs.botonProbar.click();
 
         } catch (error) {
-            if (error.message !== 'Sesión expirada') {
-                Swal.fire('Error', error.message, 'error');
-            }
+            if (error.message !== 'Sesión expirada') Swal.fire('Error', error.message, 'error');
         } finally {
             refs.botonRecalcular.innerHTML = "<span>🚨</span> Recalcular desde Hoy";
             refs.botonRecalcular.disabled = false;
         }
     });
-}
 }
 
 if (refs.botonProbar) {
@@ -387,8 +407,7 @@ if (refs.botonProbar) {
         refs.botonProbar.innerText = "Cargando...";
 
         try {
-            // 1. Traemos todo el historial de la base de datos
-            const respuesta = await Auth.apiFetch('/api/horarios/1');
+            const respuesta = await Auth.apiFetch(`/api/horarios/${DEPARTAMENTO_ID}`);
             if (!respuesta.ok) throw new Error('Error en el servidor');
             let todosLosDatos = await respuesta.json();
 
@@ -398,29 +417,24 @@ if (refs.botonProbar) {
                 return;
             }
 
-            // ✅ 2. Detectamos el mes y año en curso dinámicamente
+            // Filtrar solo el mes actual dinámicamente
             const ahora = new Date();
             const mesActual = String(ahora.getMonth() + 1).padStart(2, '0');
             const anioActual = String(ahora.getFullYear());
+            mesPrincipal = mesActual;
 
-            mesPrincipal = mesActual; // ¡Esto arregla el problema de los días grises!
-
-            // ✅ 3. Filtramos para quedarnos solo con las semanas de ESTE mes
             const fechasTotales = [...new Set(todosLosDatos.map(d => d.inicio.split('T')[0]))].sort();
             const fechasDelMes = fechasTotales.filter(f => f.startsWith(`${anioActual}-${mesActual}`));
 
             if (fechasDelMes.length > 0) {
-                // Calculamos el inicio de la primera semana y el fin de la última semana del mes
                 const indexInicio = fechasTotales.indexOf(fechasDelMes[0]);
                 const indexFin = fechasTotales.indexOf(fechasDelMes[fechasDelMes.length - 1]);
-
                 const inicioSemana = indexInicio - (indexInicio % 7);
                 const finSemana = indexFin + (6 - (indexFin % 7));
 
                 fechasUnicasMes = fechasTotales.slice(inicioSemana, finSemana + 1);
                 datosGlobales = todosLosDatos.filter(d => fechasUnicasMes.includes(d.inicio.split('T')[0]));
             } else {
-                // Por si el gerente quiere ver un mes que no es el actual (se deja por seguridad)
                 datosGlobales = todosLosDatos;
                 fechasUnicasMes = fechasTotales;
             }
@@ -429,23 +443,19 @@ if (refs.botonProbar) {
 
             configurarSelectorSemanas();
             if (refs.selectorSemana) refs.selectorSemana.classList.remove('hidden');
-            if (refs.zonaCaptura)    refs.zonaCaptura.classList.remove('hidden');
+            if (refs.zonaCaptura) refs.zonaCaptura.classList.remove('hidden');
             if (refs.botonDescargar) refs.botonDescargar.classList.remove('hidden');
 
-            // ✅ MAGIA UX: Auto-seleccionar la semana en la que estamos HOY
-            const hoyIso = ahora.toISOString().split('T')[0];
+            // Auto-seleccionar la semana de HOY
+            const hoyIso = `${anioActual}-${mesActual}-${String(ahora.getDate()).padStart(2, '0')}`;
             const indexHoy = fechasUnicasMes.indexOf(hoyIso);
             const semanaASeleccionar = indexHoy !== -1 ? Math.floor(indexHoy / 7) : 0;
 
             if (refs.selectorSemana) refs.selectorSemana.value = semanaASeleccionar;
-            
-            // Renderizamos la semana auto-detectada
             renderizarMatrizSemanal(semanaASeleccionar);
 
         } catch (error) {
-            if (error.message !== 'Sesión expirada') {
-                alert("❌ Error: " + error.message);
-            }
+            if (error.message !== 'Sesión expirada') alert("❌ Error: " + error.message);
         } finally {
             if (datosGlobales && datosGlobales.length > 0) refs.botonProbar.innerText = "Actualizar Datos";
         }
@@ -455,46 +465,51 @@ if (refs.botonProbar) {
 
 
 // ==========================================
-// 6. RENDERIZADO VISUAL DEL HORARIO
+// 7. RENDERIZADO VISUAL DEL HORARIO
 // ==========================================
 
 function renderizarMatrizSemanal(indiceSemana) {
-    if (!refs.tablaHead || !refs.tablaBody) {
-        console.error("No se encontraron 'tabla-head' o 'tabla-body' en el DOM.");
-        return;
-    }
+    if (!refs.tablaHead || !refs.tablaBody) return;
 
     const inicio = indiceSemana * 7;
     const diasDeEstaSemana = fechasUnicasMes.slice(inicio, inicio + 7);
-    const hoy = new Date().toISOString().split('T')[0];
 
+    // Fecha local correcta (sin problemas de zona horaria)
+    const ahora = new Date();
+    const hoy = ahora.getFullYear() + '-' +
+        String(ahora.getMonth() + 1).padStart(2, '0') + '-' +
+        String(ahora.getDate()).padStart(2, '0');
+
+    // Cabecera
     refs.tablaHead.innerHTML = `<tr>
         <th class="columna-empleado text-left">EMPLEADO</th>
         ${diasDeEstaSemana.map(fecha => {
-            const esRelleno = fecha.split('-')[1] !== mesPrincipal;
-            const esHoy     = fecha === hoy;
-            const bonita    = formatearFechaBonita(fecha);
-            const clases    = `${esRelleno ? 'dia-relleno ' : ''}${esHoy ? 'cabecera-hoy ' : ''}text-center`;
-            return `<th class="${clases}">
+        const esRelleno = fecha.split('-')[1] !== mesPrincipal;
+        const esHoy = fecha === hoy;
+        const bonita = formatearFechaBonita(fecha);
+        const clases = `${esRelleno ? 'dia-relleno ' : ''}${esHoy ? 'cabecera-hoy ' : ''}text-center`;
+        return `<th class="${clases}">
                 <div class="opacity-60 mb-1 text-[10px]">${bonita.diaPalabra}</div>
                 <div class="text-sm font-bold">${bonita.fechaCorta}</div>
                 ${esHoy ? '<div class="etiqueta-hoy">HOY</div>' : ''}
             </th>`;
-        }).join('')}
+    }).join('')}
     </tr>`;
 
+    // Título de semana
     if (refs.tituloSemana) {
         const primera = formatearFechaBonita(diasDeEstaSemana[0]);
-        const ultima  = formatearFechaBonita(diasDeEstaSemana[diasDeEstaSemana.length - 1]);
+        const ultima = formatearFechaBonita(diasDeEstaSemana[diasDeEstaSemana.length - 1]);
         refs.tituloSemana.innerText = `Semana ${indiceSemana + 1} | ${primera.fechaCorta} AL ${ultima.fechaCorta}`;
     }
 
+    // Cuerpo
     refs.tablaBody.innerHTML = empleadosUnicos.map(emp => {
         const celdas = diasDeEstaSemana.map(fecha => {
-            const esHoy     = fecha === hoy;
+            const esHoy = fecha === hoy;
             const esRelleno = fecha.split('-')[1] !== mesPrincipal;
-            const turno     = datosGlobales.find(d => d.nombreEmpleado === emp && d.inicio.split('T')[0] === fecha);
-            const clases    = `text-center transition-all ${esHoy ? 'celda-hoy ' : ''}${esRelleno ? 'dia-relleno ' : ''}`;
+            const turno = datosGlobales.find(d => d.nombreEmpleado === emp && d.inicio.split('T')[0] === fecha);
+            const clases = `text-center transition-all ${esHoy ? 'celda-hoy ' : ''}${esRelleno ? 'dia-relleno ' : ''}`;
 
             let contenido = '<span class="opacity-10">-</span>';
 
@@ -504,15 +519,14 @@ function renderizarMatrizSemanal(indiceSemana) {
                         contenido = '<div class="estado-descanso p-2">DESCANSO</div>';
                     } else {
                         const esPrivado = turno.tipoTurno.includes('PERMISO');
-                        const texto     = esPrivado ? 'DESCANSO' : turno.tipoTurno.replace('_', ' ');
-                        contenido = `<div class="estado-peticion p-2">
+                        const texto = esPrivado ? 'DESCANSO' : turno.tipoTurno.replace('_', ' ');
+                        contenido = `<div class="estado-peticion p-2 truncate" title="${texto}">
                             <span class="vista-gerente etiqueta-peticion">${texto}</span>
-                            <span class="vista-empleado hidden text-[10px] opacity-40 font-bold">DESCANSO</span>
                         </div>`;
                     }
                 } else {
-                    const hIn    = turno.inicio.split('T')[1].substring(0, 5);
-                    const hOut   = turno.fin.split('T')[1].substring(0, 5);
+                    const hIn = turno.inicio.split('T')[1].substring(0, 5);
+                    const hOut = turno.fin.split('T')[1].substring(0, 5);
                     const claseT = turno.tipoTurno === 'APERTURA' ? 'turno-apertura' : 'turno-cierre';
                     contenido = `<div class="flex flex-col items-center justify-center h-full gap-1">
                         <span class="${claseT}">${turno.tipoTurno}</span>
@@ -535,7 +549,7 @@ function configurarSelectorSemanas() {
 
     for (let i = 0; i < totalSemanas; i++) {
         const opcion = document.createElement('option');
-        opcion.value     = i;
+        opcion.value = i;
         opcion.innerText = `Semana ${i + 1}`;
         refs.selectorSemana.appendChild(opcion);
     }
@@ -546,8 +560,8 @@ function configurarSelectorSemanas() {
 }
 
 function formatearFechaBonita(fechaIso) {
-    const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-    const dias  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     const fecha = new Date(fechaIso + "T12:00:00");
     return {
         diaPalabra: dias[fecha.getDay()],
@@ -558,7 +572,7 @@ function formatearFechaBonita(fechaIso) {
 
 
 // ==========================================
-// 7. 📸 DESCARGA DE IMAGEN (WhatsApp)
+// 8. 📸 DESCARGA DE IMAGEN (WhatsApp)
 // ==========================================
 
 if (refs.botonDescargar) {
@@ -581,7 +595,9 @@ if (refs.botonDescargar) {
             });
 
             const indiceSemana = refs.selectorSemana ? parseInt(refs.selectorSemana.value) : 0;
-            const titulo = refs.tituloSemana ? refs.tituloSemana.innerText.replace(/\s+/g, '_').replace(/\|/g, '-') : `Semana_${indiceSemana + 1}`;
+            const titulo = refs.tituloSemana
+                ? refs.tituloSemana.innerText.replace(/\s+/g, '_').replace(/\|/g, '-')
+                : `Semana_${indiceSemana + 1}`;
             const nombreArchivo = `Horario_${titulo}.png`;
 
             const link = document.createElement('a');
@@ -592,11 +608,11 @@ if (refs.botonDescargar) {
             Swal.fire({
                 icon: 'success',
                 title: '¡Imagen lista!',
-                text: `"${nombreArchivo}" descargada. ¡Lista para enviar por WhatsApp! 📲`,
+                text: `"${nombreArchivo}" descargada. ¡Lista para WhatsApp! 📲`,
                 timer: 2500,
                 showConfirmButton: false,
                 background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                color:      refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+                color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
             });
 
         } catch (err) {
@@ -613,54 +629,19 @@ if (refs.botonDescargar) {
 
 
 // ==========================================
-// 8. BANDEJA DE NOVEDADES
+// 9. BANDEJA UNIFICADA (NOVEDADES + ASISTENCIAS)
 // ==========================================
 
 async function cargarNovedadesDesdeAPI() {
     try {
-        const res = await Auth.apiFetch(`/api/novedades/pendientes/${DEPARTAMENTO_ID}`);
-        if (!res.ok) throw new Error('Error al conectar con la bandeja de novedades');
-
-        const datos = await res.json();
-        novedadesPendientes = datos.map(n => ({
-            id:          n.id,
-            empleado:    n.empleado.nombre,
-            score:       n.empleado.scorePuntos || 0,
-            minutos:     n.empleado.minutosDeuda || 0, // 🚀 NUEVO: Traemos el banco de horas
-            aceptadas:   n.empleado.peticionesAceptadasMes || 0,
-            tipo:        n.tipo,
-            inicio:      n.fechaInicio,
-            fin:         n.fechaFin,
-            prioridad:   n.nivelPrioridad,
-            observacion: n.observacion || "Sin observaciones"
-        }));
-
+        const res = await Auth.apiFetch(`/api/gerencia/pendientes/${DEPARTAMENTO_ID}`);
+        if (!res.ok) throw new Error('Error al conectar con la bandeja unificada');
+        novedadesPendientes = await res.json();
         renderizarNovedades();
     } catch (error) {
         console.error("❌ Fallo al cargar novedades:", error);
     }
 }
-
-function toggleModal() {
-    if (!refs.modalNovedades) return;
-
-    if (refs.modalNovedades.classList.contains('hidden')) {
-        refs.modalNovedades.classList.remove('hidden');
-        setTimeout(() => {
-            refs.modalNovedades.classList.remove('opacity-0');
-            refs.modalNovedades.children[0].classList.remove('scale-95');
-        }, 10);
-        cargarNovedadesDesdeAPI();
-    } else {
-        refs.modalNovedades.classList.add('opacity-0');
-        refs.modalNovedades.children[0].classList.add('scale-95');
-        setTimeout(() => refs.modalNovedades.classList.add('hidden'), 300);
-    }
-}
-
-if (refs.btnNovedades)         refs.btnNovedades.addEventListener('click', toggleModal);
-if (refs.btnCerrarModal)       refs.btnCerrarModal.addEventListener('click', toggleModal);
-if (refs.btnCerrarModalFooter) refs.btnCerrarModalFooter.addEventListener('click', toggleModal);
 
 function renderizarNovedades() {
     if (!refs.tablaNovedadesBody) return;
@@ -672,70 +653,77 @@ function renderizarNovedades() {
 
     if (novedadesPendientes.length === 0) {
         refs.tablaNovedadesBody.innerHTML = `
-            <tr><td colspan="4" class="text-center py-8 text-gray-500">No hay peticiones pendientes. ¡Todo en orden! 🎉</td></tr>`;
+            <tr><td colspan="4" class="text-center py-8 text-gray-500">No hay acciones pendientes. ¡Todo en orden! 🎉</td></tr>`;
         return;
     }
 
-    refs.tablaNovedadesBody.innerHTML = novedadesPendientes.map(nov => {
+    refs.tablaNovedadesBody.innerHTML = novedadesPendientes.map(item => {
         let colorPrioridad, textoPrioridad, botonesAccion, insigniaScore = '';
-        
-        // Detectamos si es un cobro del banco de horas
-        const esCobroHoras = nov.tipo === 'PERMISO_ESPECIAL' && nov.observacion.includes('BANCO_HORAS');
 
-        if (nov.prioridad === 5) {
-            colorPrioridad = "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 border-red-200";
-            textoPrioridad = "🚨 EMERGENCIA (Inamovible)";
-            botonesAccion  = `<button onclick="aprobarNovedad(${nov.id})" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white px-3 py-1 rounded font-bold transition">Enterado</button>`;
-        } 
-        else if (esCobroHoras) {
-            // 🏦 ECONOMÍA DE MINUTOS (Banco de Horas)
-            const costoMins = 480; // 8 Horas
-            const horasFavor = (nov.minutos / 60).toFixed(1);
-            const puedePagar = nov.minutos >= costoMins;
-            
-            colorPrioridad = "bg-purple-100 text-purple-700 border-purple-200";
-            textoPrioridad = "⏱️ COBRO DE HORAS";
-            
+        if (item.esAsistencia) {
+            const esHorasExtra = item.tipo === 'HORAS_EXTRA_PENDIENTES';
+            colorPrioridad = esHorasExtra
+                ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                : "bg-rose-100 text-rose-700 border-rose-200";
+            textoPrioridad = esHorasExtra ? "⏱️ HORAS EXTRA" : "🚨 SALIDA TEMPRANA";
             insigniaScore = `
-                <div class="mt-2 text-[10px] font-bold ${puedePagar ? 'text-purple-600' : 'text-red-500'}">
-                    ⏱️ Banco de Horas: ${horasFavor} hrs a favor (Costo: -8 hrs)
-                    <br><span class="${!puedePagar ? 'text-red-600 bg-red-100 px-1 rounded' : 'text-gray-400 font-normal'}">
-                        ${!puedePagar ? '¡Alerta! El empleado no tiene horas suficientes' : 'Aprobación limpia y justa'}
-                    </span>
-                </div>
-            `;
-            botonesAccion = generarBotonesAprobacion(nov.id);
-        } 
-        else {
-            // 💰 ECONOMÍA DE PUNTOS (Score normal)
-            const costo = 50;
-            const saldoResultante = nov.score - costo;
-            const generaDeuda = saldoResultante < 0;
+                <div class="mt-2 text-[10px] font-bold ${esHorasExtra ? 'text-emerald-600' : 'text-rose-600'}">
+                    ${esHorasExtra
+                    ? `Al aprobar, se sumarán ${item.observacion.split(' ')[0]} al banco a favor.`
+                    : `Si rechazas, se descontarán 10 pts y se restará el tiempo.`}
+                </div>`;
+            botonesAccion = generarBotonesAprobacion(item.id, true);
 
-            colorPrioridad = nov.prioridad >= 3 ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-blue-100 text-blue-700 border-blue-200";
-            textoPrioridad = nov.prioridad >= 3 ? "⭐ ALTA (Permiso)" : "💡 BAJA (Preferencia)";
-            
-            insigniaScore = `
-                <div class="mt-2 text-[10px] font-bold ${generaDeuda ? 'text-red-500' : 'text-emerald-500'}">
-                    🪙 Score Actual: ${nov.score} pts (Costo: -${costo})
-                    <br><span class="${generaDeuda ? 'text-red-600 bg-red-100 px-1 rounded' : 'text-gray-400 font-normal'}">
-                        ${generaDeuda ? `¡OJO! Lo enviarás a deuda: ${saldoResultante} pts` : `Quedarán ${saldoResultante} pts`}
-                    </span>
-                </div>
-            `;
-            botonesAccion = generarBotonesAprobacion(nov.id);
+        } else {
+            const esCobroHoras = item.tipo === 'PERMISO_ESPECIAL' && item.observacion?.includes('BANCO_HORAS');
+
+            if (item.prioridad === 5) {
+                colorPrioridad = "bg-red-100 text-red-700 border-red-200";
+                textoPrioridad = "🚨 EMERGENCIA (Inamovible)";
+                botonesAccion = `<button onclick="resolverAccion(${item.id}, true, false)" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white px-3 py-1 rounded font-bold transition">Enterado</button>`;
+            } else if (esCobroHoras) {
+                const costoMins = 480;
+                const horasFavor = (item.minutos / 60).toFixed(1);
+                const puedePagar = item.minutos >= costoMins;
+                colorPrioridad = "bg-purple-100 text-purple-700 border-purple-200";
+                textoPrioridad = "⏱️ COBRO DE HORAS";
+                insigniaScore = `
+                    <div class="mt-2 text-[10px] font-bold ${puedePagar ? 'text-purple-600' : 'text-red-500'}">
+                        ⏱️ Banco: ${horasFavor} hrs a favor (Costo: -8 hrs)
+                        <br><span class="${!puedePagar ? 'text-red-600 bg-red-100 px-1 rounded' : 'text-gray-400 font-normal'}">
+                            ${!puedePagar ? '¡Alerta! No tiene horas suficientes' : 'Aprobación limpia'}
+                        </span>
+                    </div>`;
+                botonesAccion = generarBotonesAprobacion(item.id, false);
+            } else {
+                const costo = 50;
+                const saldoResultante = item.score - costo;
+                const generaDeuda = saldoResultante < 0;
+                colorPrioridad = item.prioridad >= 3
+                    ? "bg-amber-100 text-amber-700 border-amber-200"
+                    : "bg-blue-100 text-blue-700 border-blue-200";
+                textoPrioridad = item.prioridad >= 3 ? "⭐ ALTA (Permiso)" : "💡 BAJA (Preferencia)";
+                insigniaScore = `
+                    <div class="mt-2 text-[10px] font-bold ${generaDeuda ? 'text-red-500' : 'text-emerald-500'}">
+                        🪙 Score: ${item.score} pts (Costo: -${costo})
+                        <br><span class="${generaDeuda ? 'text-red-600 bg-red-100 px-1 rounded' : 'text-gray-400 font-normal'}">
+                            ${generaDeuda ? `¡OJO! Quedará en deuda: ${saldoResultante} pts` : `Quedarán ${saldoResultante} pts`}
+                        </span>
+                    </div>`;
+                botonesAccion = generarBotonesAprobacion(item.id, false);
+            }
         }
 
         return `
             <tr class="hover:bg-gray-50 dark:hover:bg-[#20242c] transition-colors border-b border-gray-50 dark:border-gray-800/50">
                 <td class="px-6 py-4">
-                    <div class="font-bold text-gray-800 dark:text-white">${nov.empleado}</div>
-                    <div class="text-xs text-gray-500 italic mt-1">"${nov.observacion}"</div>
+                    <div class="font-bold text-gray-800 dark:text-white">${item.nombreEmpleado}</div>
+                    <div class="text-xs text-gray-500 italic mt-1">"${item.observacion}"</div>
                     ${insigniaScore}
                 </td>
                 <td class="px-6 py-4">
-                    <div class="font-bold text-[11px] tracking-wider text-gray-500 dark:text-gray-400 uppercase">${nov.tipo}</div>
-                    <div class="font-mono text-sm mt-1">${nov.inicio} <span class="text-gray-400">al</span> ${nov.fin}</div>
+                    <div class="font-bold text-[11px] tracking-wider text-gray-500 dark:text-gray-400 uppercase">${item.tipo.replace(/_/g, ' ')}</div>
+                    <div class="font-mono text-sm mt-1">${item.fechaInicio} ${item.fechaFin ? `<span class="text-gray-400">al</span> ${item.fechaFin}` : ''}</div>
                 </td>
                 <td class="px-6 py-4 text-center">
                     <span class="px-2 py-1 rounded text-[10px] font-bold border ${colorPrioridad}">${textoPrioridad}</span>
@@ -747,52 +735,165 @@ function renderizarNovedades() {
     }).join('');
 }
 
-async function aprobarNovedad(id) {
+// Función maestra unificada para aprobar/rechazar
+async function resolverAccion(id, aprobado, esAsistencia) {
+    if (!aprobado) {
+        const { isConfirmed } = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: esAsistencia
+                ? "Se aplicará el castigo en score y tiempo."
+                : "La petición será rechazada y eliminada.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Sí, rechazar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!isConfirmed) return;
+    }
+
+    const endpoint = esAsistencia
+        ? '/api/gerencia/procesar-asistencia'
+        : (aprobado ? `/api/novedades/${id}/aprobar` : `/api/novedades/${id}/rechazar`);
+    const method = esAsistencia ? 'POST' : (aprobado ? 'PUT' : 'DELETE');
+    const params = esAsistencia ? `?asistenciaId=${id}&aprobado=${aprobado}` : '';
+
     try {
-        // ✅ Auth.apiFetch
-        const res = await Auth.apiFetch(`/api/novedades/${id}/aprobar`, { method: 'PUT' });
-        if (!res.ok) throw new Error('No se pudo procesar la aprobación');
-        Swal.fire({ title: 'Aprobada', text: 'La petición ha sido aceptada.', icon: 'success', timer: 2000, showConfirmButton: false });
+        const res = await Auth.apiFetch(endpoint + params, { method });
+        if (!res.ok) throw new Error('No se pudo procesar la acción');
+        Swal.fire({ title: aprobado ? 'Aprobado ✅' : 'Rechazado ❌', icon: 'success', timer: 1500, showConfirmButton: false });
         cargarNovedadesDesdeAPI();
     } catch (error) {
-        if (error.message !== 'Sesión expirada') {
-            Swal.fire('Error', error.message, 'error');
-        }
+        if (error.message !== 'Sesión expirada') Swal.fire('Error', error.message, 'error');
     }
 }
 
-async function rechazarNovedad(id) {
-    const confirmacion = await Swal.fire({
-        title: '¿Estás seguro?',
-        text: "La petición será eliminada permanentemente.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ef4444',
-        confirmButtonText: 'Sí, rechazar',
-        cancelButtonText: 'Cancelar'
-    });
-
-    if (!confirmacion.isConfirmed) return;
-
-    try {
-        // ✅ Auth.apiFetch
-        const res = await Auth.apiFetch(`/api/novedades/${id}/rechazar`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('No se pudo eliminar la petición');
-        Swal.fire('Eliminada', 'Petición rechazada con éxito.', 'success');
-        cargarNovedadesDesdeAPI();
-    } catch (error) {
-        if (error.message !== 'Sesión expirada') {
-            Swal.fire('Error', error.message, 'error');
-        }
-    }
-}
-
-function generarBotonesAprobacion(id) {
+function generarBotonesAprobacion(id, esAsistencia) {
     return `
-        <button onclick="aprobarNovedad(${id})" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded font-bold transition flex items-center gap-1">
+        <button onclick="resolverAccion(${id}, true, ${esAsistencia})" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded font-bold transition flex items-center gap-1">
             <span>✓</span> Aprobar
         </button>
-        <button onclick="rechazarNovedad(${id})" class="text-xs bg-gray-200 hover:bg-red-500 hover:text-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded font-bold transition flex items-center gap-1">
+        <button onclick="resolverAccion(${id}, false, ${esAsistencia})" class="text-xs bg-gray-200 hover:bg-red-500 hover:text-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded font-bold transition flex items-center gap-1">
             <span>×</span> Rechazar
         </button>`;
+}
+
+
+
+// ==========================================
+// 10. PASE DE LISTA Y VALIDACIÓN DE ASISTENCIA
+// ==========================================
+
+function renderizarPaseDeLista() {
+    if (!refs.contenedorListaHoy) return;
+
+    const ahora = new Date();
+    const hoyIso = ahora.getFullYear() + '-' +
+        String(ahora.getMonth() + 1).padStart(2, '0') + '-' +
+        String(ahora.getDate()).padStart(2, '0');
+
+    const turnosHoy = datosGlobales.filter(t => t.inicio.startsWith(hoyIso) && !t.esDescanso);
+
+    if (turnosHoy.length === 0) {
+        refs.contenedorListaHoy.innerHTML = `
+            <div class="text-center py-10">
+                <p class="text-gray-500 italic">No hay turnos para hoy (${hoyIso}).</p>
+                <p class="text-[10px] text-gray-600 mt-2 underline cursor-pointer" onclick="location.reload()">¿No ves nada? Haz clic aquí para refrescar</p>
+            </div>`;
+        return;
+    }
+
+    refs.contenedorListaHoy.innerHTML = turnosHoy.map(turno => {
+        const hIn = turno.inicio.split('T')[1].substring(0, 5);
+        const hOut = turno.fin.split('T')[1].substring(0, 5);
+        return `
+            <div class="flex justify-between items-center bg-gray-50 dark:bg-[#20242c] p-4 rounded-xl border border-gray-100 dark:border-gray-800 mb-2">
+                <div>
+                    <h4 class="font-bold text-gray-800 dark:text-white text-lg">${turno.nombreEmpleado}</h4>
+                    <div class="flex gap-2 items-center mt-1">
+                        <span class="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded font-black uppercase">${turno.tipoTurno}</span>
+                        <span class="text-xs text-gray-400 font-mono">${hIn} - ${hOut}</span>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="prepararValidacion('${turno.nombreEmpleado}', ${turno.empleadoId}, ${turno.id}, 'check-in')"
+                            class="bg-emerald-600/20 text-emerald-500 border border-emerald-500/20 font-bold py-2 px-4 rounded-lg hover:bg-emerald-600 hover:text-white transition text-xs">
+                        ENTRADA
+                    </button>
+                    <button onclick="prepararValidacion('${turno.nombreEmpleado}', ${turno.empleadoId}, ${turno.id}, 'check-out')"
+                            class="bg-rose-600/20 text-rose-500 border border-rose-500/20 font-bold py-2 px-4 rounded-lg hover:bg-rose-600 hover:text-white transition text-xs">
+                        SALIDA
+                    </button>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function prepararValidacion(nombre, empleadoId, turnoId, tipo) {
+    asistenciaPendiente = { nombre, empleadoId, turnoId, tipo };
+    getEl('validar-nombre-label').innerText = nombre;
+    getEl('pass-validacion').value = "";
+    const modal = getEl('modal-validar-empleado');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.replace('opacity-0', 'opacity-100'), 10);
+    getEl('pass-validacion').focus();
+}
+
+function cerrarValidacion() {
+    const modal = getEl('modal-validar-empleado');
+    modal.classList.replace('opacity-100', 'opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+async function ejecutarValidacionYRegistro(e) {
+    e.preventDefault();
+    const pass = getEl('pass-validacion').value;
+    if (!pass) return Swal.fire('Error', 'Ingresa la contraseña', 'error');
+
+    try {
+        const loginRes = await fetch('http://localhost:8080/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: asistenciaPendiente.nombre, password: pass })
+        });
+
+        if (loginRes.ok) {
+            const dataLogin = await loginRes.json();
+            const resAsistencia = await fetch(`http://localhost:8080/api/asistencia/${asistenciaPendiente.tipo}?empleadoId=${asistenciaPendiente.empleadoId}&turnoId=${asistenciaPendiente.turnoId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${dataLogin.jwToken}` }
+            });
+
+            // ✅ AHORA — mensaje personalizado según respuesta de Java
+            if (resAsistencia.ok) {
+                const resultado = await resAsistencia.json();
+
+                let titulo = "¡Registro Exitoso!";
+                let icono = "success";
+                let mensaje = `Hola ${asistenciaPendiente.nombre}, has registrado tu ${asistenciaPendiente.tipo}.`;
+
+                if (resultado.estado === 'TARDE') {
+                    titulo = "¡Llegada Tarde!";
+                    icono = "warning";
+                    mensaje = `Registrado, pero tienes una penalización por demora.`;
+                }
+
+                Swal.fire({
+                    icon: icono,
+                    title: titulo,
+                    text: mensaje,
+                    background: '#1a1d23',
+                    color: '#fff',
+                    confirmButtonColor: '#10b981'
+                });
+
+                cerrarValidacion();
+                if (refs.botonProbar) refs.botonProbar.click();
+            }
+        } else {
+            Swal.fire('Error', 'Contraseña incorrecta. Inténtalo de nuevo.', 'error');
+        }
+    } catch (error) {
+        Swal.fire('Error', 'Fallo de conexión con el servidor', 'error');
+    }
 }
