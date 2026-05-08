@@ -1,8 +1,11 @@
 // ==========================================
 // GUARD — protege la página
 // ==========================================
-// Descomenta cuando el login esté funcionando:
-// Auth.checkGuard([Auth.LEVELS.SUB_GERENTE, Auth.LEVELS.GERENTE, Auth.LEVELS.ADMIN_EMPRESA, Auth.LEVELS.SUPER_ADMIN]);
+ Auth.checkGuard([
+    Auth.LEVELS.SUB_GERENTE,
+    Auth.LEVELS.GERENTE, 
+    Auth.LEVELS.ADMIN_EMPRESA, 
+    Auth.LEVELS.SUPER_ADMIN]);
 
 // ==========================================
 // 1. REFERENCIAS AL DOM Y ESTADO
@@ -61,9 +64,17 @@ const DEPARTAMENTO_ID = _usuario?.departamentoId ?? 1;
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Listener del formulario de validación de asistencia (evita error de null)
+    // 1. Listener del formulario de validación (el que ya tenías)
     if (refs.formConfirmarAsistencia) {
         refs.formConfirmarAsistencia.addEventListener('submit', ejecutarValidacionYRegistro);
+    }
+
+    // ✅ 2. MAGIA UX: Auto-cargar los datos del horario al entrar al panel
+    if (refs.botonProbar) {
+        // Le damos medio segundo a la interfaz para "respirar" y simulamos el clic
+        setTimeout(() => {
+            refs.botonProbar.click();
+        }, 500); 
     }
 });
 
@@ -662,16 +673,30 @@ function renderizarNovedades() {
 
         if (item.esAsistencia) {
             const esHorasExtra = item.tipo === 'HORAS_EXTRA_PENDIENTES';
-            colorPrioridad = esHorasExtra
-                ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                : "bg-rose-100 text-rose-700 border-rose-200";
-            textoPrioridad = esHorasExtra ? "⏱️ HORAS EXTRA" : "🚨 SALIDA TEMPRANA";
-            insigniaScore = `
-                <div class="mt-2 text-[10px] font-bold ${esHorasExtra ? 'text-emerald-600' : 'text-rose-600'}">
-                    ${esHorasExtra
-                    ? `Al aprobar, se sumarán ${item.observacion.split(' ')[0]} al banco a favor.`
-                    : `Si rechazas, se descontarán 10 pts y se restará el tiempo.`}
-                </div>`;
+            const esRetardo = item.tipo === 'LLEGADA_TARDE_PENDIENTE';
+
+            if (esHorasExtra) {
+                colorPrioridad = "bg-emerald-100 text-emerald-700 border-emerald-200";
+                textoPrioridad = "⏱️ HORAS EXTRA";
+                insigniaScore = `
+                    <div class="mt-2 text-[10px] font-bold text-emerald-600">
+                        Al aprobar, se sumarán ${item.observacion.split(' ')[0]} al banco a favor.
+                    </div>`;
+            } else if (esRetardo) {
+                colorPrioridad = "bg-amber-100 text-amber-700 border-amber-200";
+                textoPrioridad = "⚠️ LLEGADA TARDE";
+                insigniaScore = `
+                    <div class="mt-2 text-[10px] font-bold text-amber-600">
+                        ¿Perdonar retardo? Si rechazas, se aplicará el castigo de -10 pts al score.
+                    </div>`;
+            } else {
+                colorPrioridad = "bg-rose-100 text-rose-700 border-rose-200";
+                textoPrioridad = "🚨 SALIDA TEMPRANA";
+                insigniaScore = `
+                    <div class="mt-2 text-[10px] font-bold text-rose-600">
+                        ¿Justificar salida? Si rechazas, se descontarán 10 pts y se restará el tiempo.
+                    </div>`;
+            }
             botonesAccion = generarBotonesAprobacion(item.id, true);
 
         } else {

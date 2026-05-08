@@ -1,21 +1,21 @@
 // ==========================================
 // 1. EL CANDADO PROTECTOR (Se ejecuta de inmediato)
 // ==========================================
-/*Auth.checkGuard([
-        Auth.LEVELS.EMPLEADO,  
-        Auth.LEVELS.ENCARGADO, 
-        Auth.LEVELS.SUB_GERENTE, 
-        Auth.LEVELS.GERENTE, 
-        Auth.LEVELS.ADMIN_EMPRESA,
-        Auth.LEVELS.SUPER_ADMIN]);
-*/
+Auth.checkGuard([
+    Auth.LEVELS.EMPLEADO,
+    Auth.LEVELS.ENCARGADO,
+    Auth.LEVELS.SUB_GERENTE,
+    Auth.LEVELS.GERENTE,
+    Auth.LEVELS.ADMIN_EMPRESA,
+    Auth.LEVELS.SUPER_ADMIN]);
+
 
 // ==========================================
 // 2. CARGA DE LA INTERFAZ
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const usuario = Auth.getUser();
-    
+
     // A. Saludo Dinámico
     if (usuario && usuario.nombre) {
         const h2Saludo = document.querySelector('h2.text-indigo-400');
@@ -40,12 +40,11 @@ async function verMiHorario() {
     try {
         const res = await Auth.apiFetch('/api/horarios/1');
         if (!res.ok) throw new Error('No se pudo cargar el horario');
-        
+
         const todosLosTurnos = await res.json();
         const usuario = Auth.getUser();
-        
-        const nombreUsuarioLimpio = usuario.nombre.toLowerCase().replace(/[0-9]/g, ''); 
-        const misTurnos = todosLosTurnos.filter(t => t.nombreEmpleado.toLowerCase().replace(/\s+/g, '') === nombreUsuarioLimpio);
+
+        const misTurnos = todosLosTurnos.filter(t => t.empleadoId === usuario.empleadoId);
 
         if (misTurnos.length > 0) {
             const empleadoId = misTurnos[0].empleadoId;
@@ -54,11 +53,11 @@ async function verMiHorario() {
 
         // LA MAGIA PARA SINCRONIZAR LA SEMANA ACTUAL
         const hoy = new Date();
-        const diaSemana = hoy.getDay() || 7; 
-        
+        const diaSemana = hoy.getDay() || 7;
+
         const lunes = new Date(hoy);
         lunes.setDate(hoy.getDate() - diaSemana + 1);
-        lunes.setMinutes(lunes.getMinutes() - lunes.getTimezoneOffset()); 
+        lunes.setMinutes(lunes.getMinutes() - lunes.getTimezoneOffset());
         const lunesIso = lunes.toISOString().split('T')[0];
 
         const domingo = new Date(lunes);
@@ -93,9 +92,9 @@ async function verMiHorario() {
                 📅 Mi Horario Semanal
             </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 10px;">`;
-        
+
         turnosSemanaActual.forEach(t => {
-            const partesFecha = t.inicio.split('T')[0].split('-'); 
+            const partesFecha = t.inicio.split('T')[0].split('-');
             const diaNumero = partesFecha[2];
             const nombreMes = meses[parseInt(partesFecha[1]) - 1];
 
@@ -104,7 +103,7 @@ async function verMiHorario() {
 
             const hIn = t.inicio.split('T')[1].substring(0, 5);
             const hOut = t.fin.split('T')[1].substring(0, 5);
-            
+
             let colorTexto = t.esDescanso ? '#9ca3af' : (t.tipoTurno === 'APERTURA' ? '#10b981' : '#3b82f6');
             let colorFondoEtiqueta = t.esDescanso ? 'rgba(255,255,255,0.05)' : (t.tipoTurno === 'APERTURA' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)');
             let etiqueta = t.esDescanso ? 'DESCANSO' : t.tipoTurno;
@@ -125,7 +124,7 @@ async function verMiHorario() {
                 </div>
             `;
         });
-        
+
         tarjetasHTML += `
             </div>
         </div>
@@ -135,36 +134,36 @@ async function verMiHorario() {
 
         Swal.fire({
             html: tarjetasHTML,
-            background: '#1a1d23', 
-            width: '950px', 
-            showConfirmButton: false, 
-            showCloseButton: true,    
+            background: '#1a1d23',
+            width: '950px',
+            showConfirmButton: false,
+            showCloseButton: true,
             didOpen: () => {
                 const btn = document.getElementById('btn-descargar-mi-horario');
                 btn.addEventListener('click', async () => {
                     const btnHTML = btn.innerHTML;
                     btn.innerHTML = "⏳ Preparando imagen...";
                     btn.disabled = true;
-                    
+
                     try {
                         const capturaDiv = document.getElementById('zona-captura-horario');
                         const canvas = await html2canvas(capturaDiv, {
-                            backgroundColor: '#1a1d23', 
-                            scale: 2 
+                            backgroundColor: '#1a1d23',
+                            scale: 2
                         });
-                        
+
                         const link = document.createElement('a');
                         link.download = `Horario_${nombreUsuarioLimpio}.png`;
                         link.href = canvas.toDataURL('image/png');
                         link.click();
-                        
+
                         Swal.fire({
                             icon: 'success',
                             title: '¡Descarga Exitosa!',
                             text: 'Revisa tu galería o carpeta de descargas.',
                             background: '#1a1d23', color: '#ffffff', timer: 2000, showConfirmButton: false
                         });
-                    } catch(err) {
+                    } catch (err) {
                         console.error(err);
                         btn.innerHTML = btnHTML;
                         btn.disabled = false;
@@ -261,7 +260,7 @@ async function abrirFormularioPermiso() {
 document.addEventListener('DOMContentLoaded', () => {
     iniciarReloj();
     inicializarDatosEmpleado();
-    
+
     // --- AQUÍ VA EL BLOQUE DE SEGURIDAD VISUAL ---
     const usuario = Auth.getUser();
     const btnEntrada = document.getElementById('btn-checkin');
@@ -269,9 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Si es un empleado normal o vendedor, le quitamos los botones para que no cheque desde casa
     if (usuario && (usuario.rol === Auth.LEVELS.EMPLEADO || usuario.rol === Auth.LEVELS.VENDEDOR)) {
-        if(btnEntrada) btnEntrada.style.display = 'none';
-        if(btnSalida) btnSalida.style.display = 'none';
-        
+        if (btnEntrada) btnEntrada.style.display = 'none';
+        if (btnSalida) btnSalida.style.display = 'none';
+
         const contenedorHora = document.querySelector('.hora-actual');
         if (contenedorHora) {
             contenedorHora.innerHTML += `<p class="text-[10px] text-amber-500 mt-2 font-bold uppercase tracking-wider">Asistencia controlada por Gerencia</p>`;
@@ -287,12 +286,12 @@ document.addEventListener('DOMContentLoaded', () => {
 async function inicializarDatosEmpleado() {
     try {
         const usuario = Auth.getUser();
-        const nombreUsuarioLimpio = usuario.nombre.toLowerCase().replace(/[0-9]/g, '');
+        const misTurnos = todosLosTurnos.filter(t => t.empleadoId === usuario.empleadoId);
 
-        const resHorarios = await Auth.apiFetch('/api/horarios/1');
+        const deptoId = usuario.departamentoId || 1;
+        const resHorarios = await Auth.apiFetch(`/api/horarios/${deptoId}`);
         if (resHorarios.ok) {
             const todosLosTurnos = await resHorarios.json();
-            const misTurnos = todosLosTurnos.filter(t => t.nombreEmpleado.toLowerCase().replace(/\s+/g, '') === nombreUsuarioLimpio);
 
             if (misTurnos.length > 0) {
                 // Sacamos su ID y cargamos sus números mágicos
@@ -313,8 +312,8 @@ function iniciarReloj() {
     setInterval(() => {
         const ahora = new Date();
         // Formato de 24 horas exacto
-        elementoReloj.innerText = ahora.toLocaleTimeString('es-MX', { 
-            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false 
+        elementoReloj.innerText = ahora.toLocaleTimeString('es-MX', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
         });
     }, 1000);
 }
@@ -329,19 +328,21 @@ async function registrarAsistencia(tipoEndpoint) {
     try {
         // 1. Necesitamos saber quién es y cuál es su turno de hoy
         const usuario = Auth.getUser();
-        const nombreUsuarioLimpio = usuario.nombre.toLowerCase().replace(/[0-9]/g, ''); 
+        const misTurnos = todosLosTurnos.filter(t => t.empleadoId === usuario.empleadoId);
 
         // Traemos los turnos para buscar el de HOY
-        const resHorarios = await Auth.apiFetch('/api/horarios/1');
+        const deptoId = usuario.departamentoId || 1;
+        const resHorarios = await Auth.apiFetch(`/api/horarios/${deptoId}`);
         if (!resHorarios.ok) throw new Error('No se pudo cargar tu horario para verificar el turno.');
-        
+
         const todosLosTurnos = await resHorarios.json();
-        
+
         const hoyIso = new Date().toISOString().split('T')[0]; // Ej: "2026-05-06"
-        
+
         // Buscamos el turno que le toca HOY a este empleado
-        const turnoDeHoy = todosLosTurnos.find(t => 
-            t.nombreEmpleado.toLowerCase().replace(/\s+/g, '') === nombreUsuarioLimpio &&
+        // Buscamos el turno que le toca HOY a este empleado usando el ID matemático
+        const turnoDeHoy = todosLosTurnos.find(t =>
+            t.empleadoId === usuario.empleadoId &&
             t.inicio.startsWith(hoyIso)
         );
 
@@ -361,11 +362,11 @@ async function registrarAsistencia(tipoEndpoint) {
 
         if (resAsistencia.ok) {
             const data = await resAsistencia.json();
-            
+
             // Evaluamos el estado que calculó tu Java
             let icono = 'success';
             let mensaje = 'Registrado exitosamente.';
-            
+
             if (data.estado === 'RETARDO') {
                 icono = 'warning';
                 mensaje = 'Tu entrada fue registrada con retardo. Se han descontado puntos de tu score.';
@@ -407,10 +408,10 @@ async function cargarEstadisticas(empleadoId) {
         const res = await Auth.apiFetch(`/api/asistencia/stats/${empleadoId}`);
         if (res.ok) {
             const data = await res.json();
-            
+
             const elementoScore = document.getElementById('stat-score');
             const elementoDeuda = document.getElementById('stat-deuda');
-            const textoDeuda = elementoDeuda.nextElementSibling; 
+            const textoDeuda = elementoDeuda.nextElementSibling;
 
             // Actualizamos el Score
             if (elementoScore) elementoScore.innerText = data.scorePuntos;
@@ -418,11 +419,11 @@ async function cargarEstadisticas(empleadoId) {
             // Actualizamos la Deuda (Universal: Horas y Minutos)
             if (elementoDeuda) {
                 const totalMinutos = Math.abs(data.minutosDeuda);
-                
+
                 // Matemática simple y universal
                 const horas = Math.floor(totalMinutos / 60);
                 const minutos = totalMinutos % 60;
-                
+
                 let textoFormateado = "";
                 if (horas > 0) textoFormateado += `${horas}h `;
                 textoFormateado += `${minutos}m`;
@@ -431,7 +432,7 @@ async function cargarEstadisticas(empleadoId) {
                 if (totalMinutos === 0) textoFormateado = "0h 0m";
 
                 elementoDeuda.innerText = textoFormateado;
-                
+
                 // Colores dinámicos
                 if (data.minutosDeuda < 0) {
                     elementoDeuda.className = "text-4xl font-black text-rose-500";

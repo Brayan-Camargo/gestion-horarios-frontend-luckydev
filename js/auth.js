@@ -32,19 +32,20 @@ const Auth = {
             });
 
             if (response.ok) {
-                const data = await response.json(); // Java devuelve { jwToken, rol }
+                const data = await response.json(); 
 
+                // ✅ AHORA GUARDAMOS LOS IDs MATEMÁTICOS
                 const userData = {
-                    nombre: username,
-                    rol:    data.rol,
-                    token:  data.jwToken
+                    nombre:         data.nombre || username,
+                    rol:            data.rol,
+                    token:          data.jwToken,
+                    empleadoId:     data.empleadoId,
+                    departamentoId: data.departamentoId
                 };
 
                 localStorage.setItem("lucky_user",  JSON.stringify(userData));
                 localStorage.setItem("lucky_token", data.jwToken);
 
-                // ✅ CORRECCIÓN: Quitamos el window.location.href de aquí.
-                // Tu archivo 'login.js' ya se encarga de redirigir correctamente.
                 return { success: true, rol: data.rol };
 
             } else {
