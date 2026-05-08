@@ -56,7 +56,7 @@ let novedadesPendientes = [];
 let mesPrincipal = "";
 let asistenciaPendiente = null;
 
-const DEPARTAMENTO_ID = _usuario?.departamentoId ?? 1;
+let DEPARTAMENTO_ID = _usuario?.departamentoId || 1;
 
 
 
@@ -76,6 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500); 
     }
     cargarNovedadesDesdeAPI();
+    // ✅ 4. NUEVO: Encender los poderes del Super Admin
+    inicializarPoderesSuperAdmin();
 });
 
 
@@ -674,32 +676,29 @@ function renderizarNovedades() {
         if (item.esAsistencia) {
             const esHorasExtra = item.tipo === 'HORAS_EXTRA_PENDIENTES';
             const esRetardo = item.tipo === 'LLEGADA_TARDE_PENDIENTE';
+            const esOmision = item.tipo === 'OMISION_DE_SALIDA_PENDIENTE'; // ✅ NUEVO
 
             if (esHorasExtra) {
                 colorPrioridad = "bg-emerald-100 text-emerald-700 border-emerald-200";
                 textoPrioridad = "⏱️ HORAS EXTRA";
-                insigniaScore = `
-                    <div class="mt-2 text-[10px] font-bold text-emerald-600">
-                        Al aprobar, se sumarán ${item.observacion.split(' ')[0]} al banco a favor.
-                    </div>`;
+                insigniaScore = `<div class="mt-2 text-[10px] font-bold text-emerald-600">Al aprobar, se sumarán ${item.observacion.split(' ')[0]} al banco a favor.</div>`;
             } else if (esRetardo) {
                 colorPrioridad = "bg-amber-100 text-amber-700 border-amber-200";
                 textoPrioridad = "⚠️ LLEGADA TARDE";
-                insigniaScore = `
-                    <div class="mt-2 text-[10px] font-bold text-amber-600">
-                        ¿Perdonar retardo? Si rechazas, se aplicará el castigo de -10 pts al score.
-                    </div>`;
+                insigniaScore = `<div class="mt-2 text-[10px] font-bold text-amber-600">¿Perdonar retardo? Si rechazas, se aplicará el castigo de -10 pts al score.</div>`;
+            } else if (esOmision) { // ✅ NUEVO
+                colorPrioridad = "bg-purple-100 text-purple-700 border-purple-200";
+                textoPrioridad = "👻 OLVIDÓ SALIDA";
+                insigniaScore = `<div class="mt-2 text-[10px] font-bold text-purple-600">Turno abandonado. Si rechazas, el sistema aplicará -15 pts por omisión.</div>`;
             } else {
                 colorPrioridad = "bg-rose-100 text-rose-700 border-rose-200";
                 textoPrioridad = "🚨 SALIDA TEMPRANA";
-                insigniaScore = `
-                    <div class="mt-2 text-[10px] font-bold text-rose-600">
-                        ¿Justificar salida? Si rechazas, se descontarán 10 pts y se restará el tiempo.
-                    </div>`;
+                insigniaScore = `<div class="mt-2 text-[10px] font-bold text-rose-600">¿Justificar salida? Si rechazas, se descontarán 10 pts y se restará el tiempo.</div>`;
             }
             botonesAccion = generarBotonesAprobacion(item.id, true);
 
         } else {
+            
             const esCobroHoras = item.tipo === 'PERMISO_ESPECIAL' && item.observacion?.includes('BANCO_HORAS');
 
             if (item.prioridad === 5) {
@@ -937,5 +936,76 @@ async function ejecutarValidacionYRegistro(e) {
         }
     } catch (error) {
         Swal.fire('Error', 'Fallo de conexión con el servidor', 'error');
+    }
+}
+
+// ==========================================
+// 👑 PODERES MULTI-SUCURSAL (SUPER ADMIN)
+// ==========================================
+async function inicializarPoderesSuperAdmin() {
+    const usuario = Auth.getUser();
+    
+    // Si no es Super Admin, abortamos y no dibujamos nada.
+    if (!usuario || usuario.rol !== Auth.LEVELS.SUPER_ADMIN) return;
+
+    try {
+        // 1. Vamos a Java a pedir los nombres reales de las sucursales
+        const res = await Auth.apiFetch('/api/departamentos');
+        if (!res.ok) throw new Error('No se pudieron cargar las sucursales');
+        const sucursales = await res.json();
+
+        // 2. Construimos las opciones del menú dinámicamente
+        let opcionesHTML = '';
+        sucursales.forEach(sucursal => {
+            // Verificamos si es la sucursal en la que estamos parados para dejarla seleccionada
+            const selected = DEPARTAMENTO_ID === sucursal.id ? 'selected' : '';
+            // Usamos sucursal.nombre (Ej: Lucky Central)
+            opcionesHTML += `<option value="${sucursal.id}" ${selected}>${sucursal.nombre}</option>`;
+        });
+
+        // 3. Creamos el control remoto flotante
+        const controlFlotante = document.createElement('div');
+        controlFlotante.className = "fixed top-4 right-4 z-50 bg-[#0f1115] border border-amber-500 p-2 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center gap-3";
+        
+        controlFlotante.innerHTML = `
+            <span class="text-amber-500 text-[10px] font-black uppercase tracking-widest">👑 Modo Dios:</span>
+            <select id="selector-super-admin" class="bg-[#1a1d23] text-white text-xs font-bold border border-gray-700 rounded-lg px-3 py-2 outline-none cursor-pointer hover:border-amber-500 transition">
+                ${opcionesHTML}
+            </select>
+        `;
+        
+        // Lo inyectamos en la pantalla
+        document.body.appendChild(controlFlotante);
+
+        // 4. Escuchamos cuando el Super Admin cambia de sucursal
+        document.getElementById('selector-super-admin').addEventListener('change', (e) => {
+            const nuevoId = parseInt(e.target.value);
+            // Capturamos el nombre real para mostrarlo en el mensaje
+            const nombreSucursal = e.target.options[e.target.selectedIndex].text; 
+            
+            DEPARTAMENTO_ID = nuevoId;
+            
+            Swal.fire({
+                title: 'Viajando...',
+                text: `Conectando con ${nombreSucursal}`,
+                icon: 'info',
+                timer: 800,
+                showConfirmButton: false,
+                background: '#1a1d23', color: '#fff'
+            });
+
+            // Vaciamos la memoria temporal
+            datosGlobales = [];
+            listaEmpleados = [];
+            novedadesPendientes = [];
+
+            // Recargamos todos los módulos con el nuevo ID
+            cargarNovedadesDesdeAPI();
+            if (refs.botonProbar) refs.botonProbar.click(); 
+            if (!refs.modalEmpleados?.classList.contains('hidden')) cargarEmpleados();
+        });
+
+    } catch (error) {
+        console.error("Error al construir el panel de Super Admin:", error);
     }
 }
