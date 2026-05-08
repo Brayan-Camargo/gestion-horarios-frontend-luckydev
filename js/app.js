@@ -64,18 +64,18 @@ const DEPARTAMENTO_ID = _usuario?.departamentoId ?? 1;
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Listener del formulario de validación (el que ya tenías)
+    // 1. Listener del formulario de validación
     if (refs.formConfirmarAsistencia) {
         refs.formConfirmarAsistencia.addEventListener('submit', ejecutarValidacionYRegistro);
     }
 
-    // ✅ 2. MAGIA UX: Auto-cargar los datos del horario al entrar al panel
     if (refs.botonProbar) {
         // Le damos medio segundo a la interfaz para "respirar" y simulamos el clic
         setTimeout(() => {
             refs.botonProbar.click();
         }, 500); 
     }
+    cargarNovedadesDesdeAPI();
 });
 
 
@@ -889,7 +889,7 @@ async function ejecutarValidacionYRegistro(e) {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${dataLogin.jwToken}` }
             });
 
-            // ✅ AHORA — mensaje personalizado según respuesta de Java
+            // Si el registro fue exitoso
             if (resAsistencia.ok) {
                 const resultado = await resAsistencia.json();
 
@@ -897,10 +897,11 @@ async function ejecutarValidacionYRegistro(e) {
                 let icono = "success";
                 let mensaje = `Hola ${asistenciaPendiente.nombre}, has registrado tu ${asistenciaPendiente.tipo}.`;
 
-                if (resultado.estado === 'TARDE') {
+                // ✅ NUEVO: Ajuste para atrapar la nueva lógica de retardos que congela la decisión
+                if (resultado.estado === 'TARDE' || resultado.estado === 'LLEGADA_TARDE_PENDIENTE') {
                     titulo = "¡Llegada Tarde!";
                     icono = "warning";
-                    mensaje = `Registrado, pero tienes una penalización por demora.`;
+                    mensaje = `Registrado, pero se ha notificado tu demora al gerente.`;
                 }
 
                 Swal.fire({
@@ -913,7 +914,23 @@ async function ejecutarValidacionYRegistro(e) {
                 });
 
                 cerrarValidacion();
+                cargarEmpleados(); // ✅ NUEVO: Recarga los puntos en el modal de equipo
+                cargarNovedadesDesdeAPI(); // ✅ NUEVO: Prende la campanita de inmediato
                 if (refs.botonProbar) refs.botonProbar.click();
+                
+            } else {
+                // ✅ NUEVO: Aquí atrapamos el error 400 (ej. "Ya tienes una SALIDA registrada")
+                const errText = await resAsistencia.text();
+                let msjError = 'No se pudo registrar la asistencia.';
+                try {
+                    const errJson = JSON.parse(errText);
+                    msjError = errJson.message || errJson.error || msjError;
+                } catch (e) { 
+                    msjError = errText || msjError; 
+                }
+                
+                Swal.fire('Atención', msjError, 'warning');
+                cerrarValidacion(); // Cerramos el modal de contraseña para que no se quede estorbando
             }
         } else {
             Swal.fire('Error', 'Contraseña incorrecta. Inténtalo de nuevo.', 'error');

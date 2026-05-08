@@ -286,12 +286,17 @@ document.addEventListener('DOMContentLoaded', () => {
 async function inicializarDatosEmpleado() {
     try {
         const usuario = Auth.getUser();
-        const misTurnos = todosLosTurnos.filter(t => t.empleadoId === usuario.empleadoId);
-
         const deptoId = usuario.departamentoId || 1;
+        
+        // 1. PRIMERO descargamos los datos desde Java
         const resHorarios = await Auth.apiFetch(`/api/horarios/${deptoId}`);
+        
         if (resHorarios.ok) {
+            // 2. CREAMOS la variable con los datos
             const todosLosTurnos = await resHorarios.json();
+
+            // 3. AHORA SÍ la filtramos
+            const misTurnos = todosLosTurnos.filter(t => t.empleadoId === usuario.empleadoId);
 
             if (misTurnos.length > 0) {
                 // Sacamos su ID y cargamos sus números mágicos
