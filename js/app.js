@@ -676,8 +676,8 @@ function renderizarNovedades() {
         if (item.esAsistencia) {
             const esHorasExtra = item.tipo === 'HORAS_EXTRA_PENDIENTES';
             const esRetardo = item.tipo === 'LLEGADA_TARDE_PENDIENTE';
-            const esOmision = item.tipo === 'OMISION_DE_SALIDA_PENDIENTE'; // ✅ NUEVO
-
+            const esOmision = item.tipo === 'OMISION_DE_SALIDA_PENDIENTE'; 
+            
             if (esHorasExtra) {
                 colorPrioridad = "bg-emerald-100 text-emerald-700 border-emerald-200";
                 textoPrioridad = "⏱️ HORAS EXTRA";
@@ -701,11 +701,27 @@ function renderizarNovedades() {
             
             const esCobroHoras = item.tipo === 'PERMISO_ESPECIAL' && item.observacion?.includes('BANCO_HORAS');
 
-            if (item.prioridad === 5) {
+            if (item.tipo === 'SOLICITUD_APOYO') {
+                colorPrioridad = "bg-blue-100 text-blue-800 border-blue-300";
+                textoPrioridad = "🚨 S.O.S. SUCURSAL";
+                insigniaScore = `<div class="mt-2 text-[10px] font-bold text-blue-600">Petición de apoyo externo.</div>`;
+                
+                botonesAccion = `
+                    <button onclick="iniciarPaseDeEmpleado(${item.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1 px-3 rounded shadow transition">
+                        🤝 Enviar Apoyo
+                    </button>
+                    <button onclick="resolverAccion(${item.id}, false, false)" class="bg-[#2a2d35] hover:bg-rose-500 text-gray-300 hover:text-white text-xs font-bold py-1 px-3 rounded shadow transition ml-2 border border-gray-600 hover:border-rose-500">
+                        ❌ No puedo
+                    </button>`;
+            }
+            // 2. Luego atrapamos las Emergencias (Prioridad 5)
+            else if (item.prioridad === 5) {
                 colorPrioridad = "bg-red-100 text-red-700 border-red-200";
                 textoPrioridad = "🚨 EMERGENCIA (Inamovible)";
                 botonesAccion = `<button onclick="resolverAccion(${item.id}, true, false)" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white px-3 py-1 rounded font-bold transition">Enterado</button>`;
-            } else if (esCobroHoras) {
+            } 
+            // 3. Luego atrapamos el Cobro del Banco de Horas
+            else if (esCobroHoras) {
                 const costoMins = 480;
                 const horasFavor = (item.minutos / 60).toFixed(1);
                 const puedePagar = item.minutos >= costoMins;
@@ -719,7 +735,9 @@ function renderizarNovedades() {
                         </span>
                     </div>`;
                 botonesAccion = generarBotonesAprobacion(item.id, false);
-            } else {
+            } 
+            // 4. Si no fue nada de lo de arriba, es un permiso normal que cobra Score
+            else {
                 const costo = 50;
                 const saldoResultante = item.score - costo;
                 const generaDeuda = saldoResultante < 0;
@@ -1007,5 +1025,180 @@ async function inicializarPoderesSuperAdmin() {
 
     } catch (error) {
         console.error("Error al construir el panel de Super Admin:", error);
+    }
+}
+
+// ==========================================
+// 🤝 S.O.S. - PEDIR APOYO ENTRE SUCURSALES
+// ==========================================
+async function abrirModalSOS() {
+    try {
+        // 1. Traemos la lista de sucursales
+        const resDeptos = await Auth.apiFetch('/api/departamentos');
+        if (!resDeptos.ok) throw new Error('Error al cargar sucursales');
+        const sucursales = await resDeptos.json();
+
+        // 2. Filtramos para NO pedirnos apoyo a nosotros mismos
+        const opciones = sucursales
+            .filter(suc => suc.id !== DEPARTAMENTO_ID)
+            .map(suc => `<option value="${suc.id}">${suc.nombre}</option>`)
+            .join('');
+
+        if (!opciones) return Swal.fire('Aviso', 'No hay otras sucursales disponibles para pedir apoyo.', 'info');
+
+        // 3. Lanzamos el Modal
+        const { value: formValues } = await Swal.fire({
+            title: '🚨 Lanzar S.O.S. a otra Sucursal',
+            html: `
+                <div class="text-left text-sm text-gray-300 mb-4">Solicita personal de apoyo para cubrir una emergencia.</div>
+                
+                <label class="block text-left text-xs font-bold text-gray-400 mb-1">Sucursal Destino:</label>
+                <select id="sos-depto" class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 mb-4 outline-none focus:border-amber-500">
+                    ${opciones}
+                </select>
+
+                <label class="block text-left text-xs font-bold text-gray-400 mb-1">Fecha en que necesitas el apoyo:</label>
+                <input type="date" id="sos-fecha" class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 mb-4 outline-none focus:border-amber-500" min="${new Date().toISOString().split('T')[0]}">
+
+                <label class="block text-left text-xs font-bold text-gray-400 mb-1">Motivo / Horario requerido:</label>
+                <textarea id="sos-motivo" class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 h-20 outline-none focus:border-amber-500" placeholder="Ej: Necesito un vendedor para cubrir el turno de 2pm a 10pm porque tuve una incapacidad médica..."></textarea>
+            `,
+            background: '#0f1115',
+            color: '#fff',
+            showCancelButton: true,
+            confirmButtonText: '🚀 Enviar S.O.S.',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#f59e0b',
+            preConfirm: () => {
+                const deptoDestino = document.getElementById('sos-depto').value;
+                const fecha = document.getElementById('sos-fecha').value;
+                const motivo = document.getElementById('sos-motivo').value;
+
+                if (!fecha || !motivo) {
+                    Swal.showValidationMessage('Por favor completa la fecha y el motivo.');
+                    return false;
+                }
+                return { deptoDestino, fecha, motivo };
+            }
+        });
+
+        // 4. Si el gerente confirmó, enviamos la petición a Java
+        if (formValues) {
+            const payload = {
+                fechaInicio: formValues.fecha,
+                fechaFin: formValues.fecha, // Es el mismo día
+                observacion: formValues.motivo,
+                nivelPrioridad: 5 // Prioridad alta para que el otro gerente lo vea
+            };
+
+            const res = await Auth.apiFetch(`/api/novedades/pedir-apoyo?deptoDestinoId=${formValues.deptoDestino}`, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                Swal.fire('¡S.O.S. Enviado! 🚀', 'La otra sucursal ha recibido tu petición en su bandeja.', 'success');
+            } else {
+                const err = await res.text();
+                Swal.fire('Error', err, 'error');
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'No se pudo iniciar la petición de apoyo.', 'error');
+    }
+}
+
+// ==========================================
+// 🤝 PRESTAR UN EMPLEADO A OTRA SUCURSAL
+// ==========================================
+async function iniciarPaseDeEmpleado(novedadId) {
+    try {
+        // 0. Buscamos de qué fecha es la emergencia
+        const sos = novedadesPendientes.find(n => n.id === novedadId);
+        if (!sos) return;
+        const fechaApoyo = sos.fechaInicio;
+
+        // 1. Obtenemos a los empleados
+        const resEmpleados = await Auth.apiFetch(`/api/empleados/departamento/${DEPARTAMENTO_ID}`);
+        if (!resEmpleados.ok) throw new Error('No se pudieron cargar los empleados');
+        const empleados = await resEmpleados.json();
+        
+        // 🛡️ Filtro de mejores prácticas (Asegúrate de que Java mande 'activo')
+        // Si aún no lo manda, puedes usar (e => e.activo !== false) temporalmente
+        const empleadosActivos = empleados.filter(e => e.activo !== false);
+
+        if (empleadosActivos.length === 0) {
+            return Swal.fire('Aviso', 'No tienes personal activo para enviar.', 'warning');
+        }
+
+        // 2. Descargamos los horarios
+        const resHorarios = await Auth.apiFetch(`/api/horarios/${DEPARTAMENTO_ID}`);
+        const horarios = await resHorarios.json();
+
+        // 3. Armamos las opciones con los nombres reales de tu Java (inicio/fin)
+        let opcionesHTML = '';
+        empleadosActivos.forEach(emp => {
+            const turnoEseDia = horarios.find(h => 
+                h.empleadoId === emp.id && 
+                h.inicio && 
+                h.inicio.startsWith(fechaApoyo)
+            );
+            
+            let etiqueta = "✅ Libre (Sin turno asignado)"; 
+            
+            if (turnoEseDia) {
+                // Usamos h.inicio y h.fin que vimos en tu consola
+                const horaEntrada = turnoEseDia.inicio.split('T')[1].substring(0, 5);
+                const horaSalida = turnoEseDia.fin.split('T')[1].substring(0, 5);
+                
+                if (turnoEseDia.esDescanso || (horaEntrada === '00:00' && horaSalida === '23:59')) {
+                    etiqueta = "✅ Libre (En su Descanso)";
+                } else {
+                    etiqueta = `⚠️ Ocupado aquí (${horaEntrada} - ${horaSalida})`;
+                }
+            }
+
+            opcionesHTML += `<option value="${emp.id}">${emp.nombre} - ${etiqueta}</option>`;
+        });
+
+        // 4. Abrimos el modal
+        const { value: empleadoElegidoId } = await Swal.fire({
+            title: '🤝 Enviar Refuerzo',
+            html: `
+                <div class="text-left text-sm text-gray-300 mb-4">
+                    Selecciona al empleado que irá de apoyo el día <b>${fechaApoyo}</b>.<br><br>
+                </div>
+                <select id="sos-empleado-prestado" class="w-full bg-[#1a1d23] text-white text-sm border border-gray-600 rounded p-2 outline-none focus:border-amber-500">
+                    ${opcionesHTML}
+                </select>
+            `,
+            background: '#0f1115',
+            color: '#fff',
+            showCancelButton: true,
+            confirmButtonText: '🚀 Confirmar Pase',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10b981',
+            preConfirm: () => document.getElementById('sos-empleado-prestado').value
+        });
+
+        // 5. Enlace con el nuevo endpoint de Java
+        if (empleadoElegidoId) {
+            const res = await Auth.apiFetch(`/api/novedades/${novedadId}/enviar-apoyo?empleadoId=${empleadoElegidoId}`, {
+                method: 'POST'
+            });
+
+            if (res.ok) {
+                Swal.fire('¡Refuerzo en camino! 🚀', 'La otra sucursal ha sido notificada.', 'success');
+                cargarNovedadesDesdeAPI();
+            } else {
+                const err = await res.text();
+                Swal.fire('Error', err, 'error');
+            }
+        }
+
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'No se pudo completar la operación.', 'error');
     }
 }
