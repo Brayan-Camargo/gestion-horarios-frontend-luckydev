@@ -76,12 +76,21 @@
                             <!-- Se llenará dinámicamente con JS -->
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Usuario para el
-                            Gerente</label>
-                        <input type="text" id="user-gerente" placeholder="Ej. gerente_lucky"
-                            class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl outline-none">
-                    </div>
+                    <div class="mb-3 text-left">
+    <label class="block text-xs font-bold text-gray-400 mb-1">NOMBRE(S)</label>
+    <input type="text" id="admin-nombre" class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 outline-none focus:border-emerald-500" placeholder="Ej. Luis Alfredo">
+</div>
+
+<div class="mb-4 flex gap-2 text-left">
+    <div class="w-1/2">
+        <label class="block text-xs font-bold text-gray-400 mb-1">PATERNO</label>
+        <input type="text" id="admin-paterno" class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 outline-none focus:border-emerald-500" placeholder="Ej. Camargo">
+    </div>
+    <div class="w-1/2">
+        <label class="block text-xs font-bold text-gray-400 mb-1">MATERNO <span class="text-gray-600 font-normal">(Opcional)</span></label>
+        <input type="text" id="admin-materno" class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 outline-none focus:border-emerald-500" placeholder="Ej. Ramirez">
+    </div>
+</div>
                     <button type="button" onclick="vincularGerencia()" class="btn-verde w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-xl font-bold transition">
                         Vincular Gerencia
                     </button>

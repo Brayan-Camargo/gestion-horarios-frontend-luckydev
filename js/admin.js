@@ -105,18 +105,31 @@ async function registrarSucursal() {
     }
 }
 
-// FUNCIÓN 3: Vincular Gerente
+// FUNCIÓN 3: Vincular Gerente (Actualizada con los 3 campos de Nombre)
 async function vincularGerencia() {
-    const deptoId = document.querySelector('select').value;
-    const username = document.querySelector('input[placeholder*="gerente"]').value;
+    // 1. Atrapamos el valor de la sucursal (tu select)
+    const deptoId = document.getElementById('sucursalSelect').value;
+    
+    // 2. Atrapamos los valores de los nuevos inputs que pusiste en el HTML
+    const nombre = document.getElementById('admin-nombre').value.trim();
+    const paterno = document.getElementById('admin-paterno').value.trim();
+    const materno = document.getElementById('admin-materno').value.trim();
 
-    // ✅ USANDO LA LLAVE CORRECTA DE LA IMAGEN
     const token = localStorage.getItem('lucky_token');
 
-    if (!deptoId || !username) {
-        alert("⚠️ Completa los campos");
+    // 3. Validamos que no dejen lo importante vacío
+    if (!deptoId || !nombre || !paterno) {
+        alert("⚠️ Faltan datos. La sucursal, el nombre y el apellido paterno son obligatorios.");
         return;
     }
+
+    // 4. Armamos el "Paquete" exacto que espera recibir nuestro Java (DatosRegistroGerente)
+    const payload = {
+        nombre: nombre,
+        apellidoPaterno: paterno,
+        apellidoMaterno: materno,
+        departamentoId: parseInt(deptoId)
+    };
 
     try {
         const response = await fetch('http://localhost:8080/api/admin/vincular-gerente', {
@@ -125,14 +138,24 @@ async function vincularGerencia() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ username, departamentoId: deptoId })
+            body: JSON.stringify(payload)
         });
 
+        const data = await response.json();
+
         if (response.ok) {
-            alert("✅ ¡Éxito total! Gerente vinculado correctamente.");
-            location.reload();
+            // Mostramos los datos de acceso generados por Java para que se los pases al gerente
+            alert(`✅ ¡Éxito! Gerente vinculado.\n\nGuarda estos datos de acceso:\n👤 Usuario: ${data.detalles.usuario}\n🔑 Contraseña: ${data.detalles.password}`);
+            
+            // Limpiamos los campos
+            document.getElementById('admin-nombre').value = '';
+            document.getElementById('admin-paterno').value = '';
+            document.getElementById('admin-materno').value = '';
+            document.getElementById('sucursalSelect').value = '';
+            
+            // Opcional: location.reload(); si quieres refrescar toda la página
         } else {
-            alert("❌ Error en el servidor: " + response.status);
+            alert("❌ Error: " + (data.error || response.statusText));
         }
     } catch (error) {
         console.error("Detalle del error:", error);

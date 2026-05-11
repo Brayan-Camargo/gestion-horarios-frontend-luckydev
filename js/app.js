@@ -16,8 +16,7 @@ const getEl = (id) => document.getElementById(id);
 const refs = {
     btnTema: getEl('btn-tema'),
     html: document.documentElement,
-    iconoTema: getEl('icono-tema'),
-    botonProbar: getEl('btn-probar'),
+    iconoTema: getEl('icono-tema'), // <- Esto puede fallar si no lo tienes en el HTML nuevo
     botonGenerar: getEl('btn-generar'),
     botonDescargar: getEl('btn-descargar'),
     botonRecalcular: getEl('btn-recalcular'),
@@ -47,7 +46,7 @@ const refs = {
     formConfirmarAsistencia: getEl('form-confirmar-asistencia'),
 };
 
-// Variables de Estado — declaradas UNA sola vez
+// Variables de Estado
 let datosGlobales = [];
 let listaEmpleados = [];
 let fechasUnicasMes = [];
@@ -59,28 +58,27 @@ let asistenciaPendiente = null;
 let DEPARTAMENTO_ID = _usuario?.departamentoId || 1;
 
 
-
 // ==========================================
 // 2. INICIALIZACIÓN
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Listener del formulario de validación
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Validar Asistencia
     if (refs.formConfirmarAsistencia) {
         refs.formConfirmarAsistencia.addEventListener('submit', ejecutarValidacionYRegistro);
     }
 
-    if (refs.botonProbar) {
-        // Le damos medio segundo a la interfaz para "respirar" y simulamos el clic
-        setTimeout(() => {
-            refs.botonProbar.click();
-        }, 500); 
-    }
+    // 2. Cargar notificaciones
     cargarNovedadesDesdeAPI();
-    // ✅ 4. NUEVO: Encender los poderes del Super Admin
-    inicializarPoderesSuperAdmin();
+    
+    // 3. Encender Modo Dios
+    if (typeof inicializarPoderesSuperAdmin === "function") {
+        inicializarPoderesSuperAdmin();
+    }
+
+    // 4. 🚀 CARGA DIRECTA (Sin depender de clics simulados)
+    console.log("Iniciando carga automática de horarios...");
+    await ejecutarCargaDeHorarios(); 
 });
-
-
 
 // ==========================================
 // 3. TEMA (DARK / LIGHT)
@@ -415,64 +413,70 @@ if (refs.botonRecalcular) {
     });
 }
 
-if (refs.botonProbar) {
-    refs.botonProbar.addEventListener('click', async () => {
-        refs.botonProbar.innerText = "Cargando...";
+// Función para cargar los datos (la lógica que antes estaba en el botón Probar)
+async function ejecutarCargaDeHorarios() {
+    if (refs.botonProbar) refs.botonProbar.innerText = "Cargando...";
 
-        try {
-            const respuesta = await Auth.apiFetch(`/api/horarios/${DEPARTAMENTO_ID}`);
-            if (!respuesta.ok) throw new Error('Error en el servidor');
-            let todosLosDatos = await respuesta.json();
+    try {
+        const respuesta = await Auth.apiFetch(`/api/horarios/${DEPARTAMENTO_ID}`);
+        if (!respuesta.ok) throw new Error('Error en el servidor');
+        let todosLosDatos = await respuesta.json();
 
-            if (todosLosDatos.length === 0) {
-                alert("⚠️ No hay horarios generados aún. Haz clic en 'Generar Nuevo Mes'.");
-                refs.botonProbar.innerText = "Actualizar Datos";
-                return;
-            }
-
-            // Filtrar solo el mes actual dinámicamente
-            const ahora = new Date();
-            const mesActual = String(ahora.getMonth() + 1).padStart(2, '0');
-            const anioActual = String(ahora.getFullYear());
-            mesPrincipal = mesActual;
-
-            const fechasTotales = [...new Set(todosLosDatos.map(d => d.inicio.split('T')[0]))].sort();
-            const fechasDelMes = fechasTotales.filter(f => f.startsWith(`${anioActual}-${mesActual}`));
-
-            if (fechasDelMes.length > 0) {
-                const indexInicio = fechasTotales.indexOf(fechasDelMes[0]);
-                const indexFin = fechasTotales.indexOf(fechasDelMes[fechasDelMes.length - 1]);
-                const inicioSemana = indexInicio - (indexInicio % 7);
-                const finSemana = indexFin + (6 - (indexFin % 7));
-
-                fechasUnicasMes = fechasTotales.slice(inicioSemana, finSemana + 1);
-                datosGlobales = todosLosDatos.filter(d => fechasUnicasMes.includes(d.inicio.split('T')[0]));
-            } else {
-                datosGlobales = todosLosDatos;
-                fechasUnicasMes = fechasTotales;
-            }
-
-            empleadosUnicos = [...new Set(datosGlobales.map(d => d.nombreEmpleado))].sort();
-
-            configurarSelectorSemanas();
-            if (refs.selectorSemana) refs.selectorSemana.classList.remove('hidden');
-            if (refs.zonaCaptura) refs.zonaCaptura.classList.remove('hidden');
-            if (refs.botonDescargar) refs.botonDescargar.classList.remove('hidden');
-
-            // Auto-seleccionar la semana de HOY
-            const hoyIso = `${anioActual}-${mesActual}-${String(ahora.getDate()).padStart(2, '0')}`;
-            const indexHoy = fechasUnicasMes.indexOf(hoyIso);
-            const semanaASeleccionar = indexHoy !== -1 ? Math.floor(indexHoy / 7) : 0;
-
-            if (refs.selectorSemana) refs.selectorSemana.value = semanaASeleccionar;
-            renderizarMatrizSemanal(semanaASeleccionar);
-
-        } catch (error) {
-            if (error.message !== 'Sesión expirada') alert("❌ Error: " + error.message);
-        } finally {
-            if (datosGlobales && datosGlobales.length > 0) refs.botonProbar.innerText = "Actualizar Datos";
+        if (todosLosDatos.length === 0) {
+            // Si eres el Super Admin probando una sucursal nueva, esto es normal
+            console.warn("⚠️ No hay horarios generados para esta sucursal.");
+            if (refs.botonProbar) refs.botonProbar.innerText = "Actualizar Datos";
+            return;
         }
-    });
+
+        const ahora = new Date();
+        const anioActual = ahora.getFullYear();
+        const mesActual = ahora.getMonth(); 
+        mesPrincipal = String(mesActual + 1).padStart(2, '0');
+
+        const primerDiaDelMes = new Date(anioActual, mesActual, 1);
+        const ultimoDiaDelMes = new Date(anioActual, mesActual + 1, 0);
+
+        const diasParaRestar = primerDiaDelMes.getDay() === 0 ? 6 : primerDiaDelMes.getDay() - 1;
+        const diasParaSumar = ultimoDiaDelMes.getDay() === 0 ? 0 : 7 - ultimoDiaDelMes.getDay();
+
+        const fechaIterador = new Date(anioActual, mesActual, 1 - diasParaRestar);
+        const fechaLimite = new Date(anioActual, mesActual, ultimoDiaDelMes.getDate() + diasParaSumar);
+
+        fechasUnicasMes = [];
+        while (fechaIterador <= fechaLimite) {
+            const y = fechaIterador.getFullYear();
+            const m = String(fechaIterador.getMonth() + 1).padStart(2, '0');
+            const d = String(fechaIterador.getDate()).padStart(2, '0');
+            fechasUnicasMes.push(`${y}-${m}-${d}`);
+            fechaIterador.setDate(fechaIterador.getDate() + 1);
+        }
+
+        datosGlobales = todosLosDatos.filter(d => fechasUnicasMes.includes(d.inicio.split('T')[0]));
+        empleadosUnicos = [...new Set(datosGlobales.map(d => d.nombreEmpleado))].sort();
+
+        configurarSelectorSemanas();
+        if (refs.selectorSemana) refs.selectorSemana.classList.remove('hidden');
+        if (refs.zonaCaptura) refs.zonaCaptura.classList.remove('hidden');
+        if (refs.botonDescargar) refs.botonDescargar.classList.remove('hidden');
+
+        const hoyIso = `${anioActual}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+        const indexHoy = fechasUnicasMes.indexOf(hoyIso);
+        const semanaASeleccionar = indexHoy !== -1 ? Math.floor(indexHoy / 7) : 0;
+
+        if (refs.selectorSemana) refs.selectorSemana.value = semanaASeleccionar;
+        renderizarMatrizSemanal(semanaASeleccionar);
+
+    } catch (error) {
+        if (error.message !== 'Sesión expirada') alert("❌ Error al cargar horarios: " + error.message);
+    } finally {
+        if (refs.botonProbar) refs.botonProbar.innerText = "Cargar / Actualizar";
+    }
+}
+
+// Mantenemos el listener del botón para que si le das clic manual también funcione
+if (refs.botonProbar) {
+    refs.botonProbar.addEventListener('click', ejecutarCargaDeHorarios);
 }
 
 
@@ -480,20 +484,19 @@ if (refs.botonProbar) {
 // ==========================================
 // 7. RENDERIZADO VISUAL DEL HORARIO
 // ==========================================
-
 function renderizarMatrizSemanal(indiceSemana) {
     if (!refs.tablaHead || !refs.tablaBody) return;
 
     const inicio = indiceSemana * 7;
     const diasDeEstaSemana = fechasUnicasMes.slice(inicio, inicio + 7);
 
-    // Fecha local correcta (sin problemas de zona horaria)
+    // Fecha local correcta
     const ahora = new Date();
     const hoy = ahora.getFullYear() + '-' +
         String(ahora.getMonth() + 1).padStart(2, '0') + '-' +
         String(ahora.getDate()).padStart(2, '0');
 
-    // Cabecera
+    // Cabecera (Se queda igual)
     refs.tablaHead.innerHTML = `<tr>
         <th class="columna-empleado text-left">EMPLEADO</th>
         ${diasDeEstaSemana.map(fecha => {
@@ -518,6 +521,15 @@ function renderizarMatrizSemanal(indiceSemana) {
 
     // Cuerpo
     refs.tablaBody.innerHTML = empleadosUnicos.map(emp => {
+        
+        // 🚀 NUEVO: Detectamos si este empleado es un refuerzo foráneo
+        const esVisitante = datosGlobales.some(d => d.nombreEmpleado === emp && d.notaGerente && d.notaGerente.includes('APOYO_SOS'));
+        
+        // Le ponemos una etiqueta bonita al lado del nombre
+        const nombreDisplay = esVisitante 
+            ? `${emp} <span class="bg-blue-600 text-white text-[9px] px-1 ml-1 rounded font-bold uppercase tracking-wider">Refuerzo</span>` 
+            : emp;
+
         const celdas = diasDeEstaSemana.map(fecha => {
             const esHoy = fecha === hoy;
             const esRelleno = fecha.split('-')[1] !== mesPrincipal;
@@ -540,18 +552,28 @@ function renderizarMatrizSemanal(indiceSemana) {
                 } else {
                     const hIn = turno.inicio.split('T')[1].substring(0, 5);
                     const hOut = turno.fin.split('T')[1].substring(0, 5);
-                    const claseT = turno.tipoTurno === 'APERTURA' ? 'turno-apertura' : 'turno-cierre';
-                    contenido = `<div class="flex flex-col items-center justify-center h-full gap-1">
-                        <span class="${claseT}">${turno.tipoTurno}</span>
-                        <span class="texto-hora font-medium">${hIn} — ${hOut}</span>
-                    </div>`;
+                    
+                    // 🚀 NUEVO: Si es el turno de apoyo, lo pintamos azul para que resalte
+                    if (turno.notaGerente && turno.notaGerente.includes('APOYO_SOS')) {
+                         contenido = `<div class="flex flex-col items-center justify-center h-full gap-1 bg-blue-900/30 border border-blue-500/50 rounded p-1 mx-1">
+                            <span class="text-blue-400 font-bold text-[10px] uppercase">Apoyo S.O.S</span>
+                            <span class="texto-hora font-medium text-blue-100">${hIn} — ${hOut}</span>
+                        </div>`;
+                    } else {
+                        const claseT = turno.tipoTurno === 'APERTURA' ? 'turno-apertura' : 'turno-cierre';
+                        contenido = `<div class="flex flex-col items-center justify-center h-full gap-1">
+                            <span class="${claseT}">${turno.tipoTurno}</span>
+                            <span class="texto-hora font-medium">${hIn} — ${hOut}</span>
+                        </div>`;
+                    }
                 }
             }
 
             return `<td class="${clases}">${contenido}</td>`;
         }).join('');
 
-        return `<tr><td class="columna-empleado">${emp}</td>${celdas}</tr>`;
+        // Aplicamos el nombre modificado
+        return `<tr><td class="columna-empleado">${nombreDisplay}</td>${celdas}</tr>`;
     }).join('');
 }
 
@@ -961,70 +983,59 @@ async function ejecutarValidacionYRegistro(e) {
 // 👑 PODERES MULTI-SUCURSAL (SUPER ADMIN)
 // ==========================================
 async function inicializarPoderesSuperAdmin() {
-    const usuario = Auth.getUser();
+    const usuario = Auth.getUser(); 
     
-    // Si no es Super Admin, abortamos y no dibujamos nada.
-    if (!usuario || usuario.rol !== Auth.LEVELS.SUPER_ADMIN) return;
+    // Si no es Super Admin, no mostramos nada
+    if (!usuario || usuario.rol !== 'SUPER_ADMIN') return;
+
+    // Mostramos el botón de regresar al panel global
+    const btnRegresar = document.getElementById('btn-regresar-admin');
+    if (btnRegresar) btnRegresar.classList.replace('hidden', 'flex');
 
     try {
-        // 1. Vamos a Java a pedir los nombres reales de las sucursales
         const res = await Auth.apiFetch('/api/departamentos');
         if (!res.ok) throw new Error('No se pudieron cargar las sucursales');
         const sucursales = await res.json();
 
-        // 2. Construimos las opciones del menú dinámicamente
-        let opcionesHTML = '';
-        sucursales.forEach(sucursal => {
-            // Verificamos si es la sucursal en la que estamos parados para dejarla seleccionada
-            const selected = DEPARTAMENTO_ID === sucursal.id ? 'selected' : '';
-            // Usamos sucursal.nombre (Ej: Lucky Central)
-            opcionesHTML += `<option value="${sucursal.id}" ${selected}>${sucursal.nombre}</option>`;
-        });
+        const contenedor = document.getElementById('contenedor-salto-sucursal');
+        if (!contenedor) return;
 
-        // 3. Creamos el control remoto flotante
-        const controlFlotante = document.createElement('div');
-        controlFlotante.className = "fixed top-4 right-4 z-50 bg-[#0f1115] border border-amber-500 p-2 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center gap-3";
-        
-        controlFlotante.innerHTML = `
-            <span class="text-amber-500 text-[10px] font-black uppercase tracking-widest">👑 Modo Dios:</span>
-            <select id="selector-super-admin" class="bg-[#1a1d23] text-white text-xs font-bold border border-gray-700 rounded-lg px-3 py-2 outline-none cursor-pointer hover:border-amber-500 transition">
-                ${opcionesHTML}
-            </select>
+        // Construimos el selector con un diseño que combine con el Dashboard
+        let opcionesHTML = sucursales.map(suc => 
+            `<option value="${suc.id}" ${DEPARTAMENTO_ID === suc.id ? 'selected' : ''}> ${suc.nombre}</option>`
+        ).join('');
+
+        contenedor.classList.replace('hidden', 'flex');
+        contenedor.innerHTML = `
+            <div class="flex items-center bg-purple-500/10 border border-purple-500/20 rounded-xl px-3 py-1.5">
+                <span class="text-xs mr-2">👑</span>
+                <select id="selector-sucursal-admin" class="bg-transparent text-purple-400 text-xs font-bold outline-none cursor-pointer">
+                    ${opcionesHTML}
+                </select>
+            </div>
         `;
-        
-        // Lo inyectamos en la pantalla
-        document.body.appendChild(controlFlotante);
 
-        // 4. Escuchamos cuando el Super Admin cambia de sucursal
-        document.getElementById('selector-super-admin').addEventListener('change', (e) => {
+        // Escuchar el cambio
+        document.getElementById('selector-sucursal-admin').addEventListener('change', (e) => {
             const nuevoId = parseInt(e.target.value);
-            // Capturamos el nombre real para mostrarlo en el mensaje
-            const nombreSucursal = e.target.options[e.target.selectedIndex].text; 
-            
             DEPARTAMENTO_ID = nuevoId;
-            
+
             Swal.fire({
-                title: 'Viajando...',
-                text: `Conectando con ${nombreSucursal}`,
+                title: 'Saltando de sucursal...',
                 icon: 'info',
                 timer: 800,
                 showConfirmButton: false,
                 background: '#1a1d23', color: '#fff'
             });
 
-            // Vaciamos la memoria temporal
+            // Recarga de datos
             datosGlobales = [];
-            listaEmpleados = [];
-            novedadesPendientes = [];
-
-            // Recargamos todos los módulos con el nuevo ID
             cargarNovedadesDesdeAPI();
-            if (refs.botonProbar) refs.botonProbar.click(); 
-            if (!refs.modalEmpleados?.classList.contains('hidden')) cargarEmpleados();
+            if (refs.botonProbar) refs.botonProbar.click();
         });
 
     } catch (error) {
-        console.error("Error al construir el panel de Super Admin:", error);
+        console.error("Error en salto de sucursal:", error);
     }
 }
 
@@ -1038,9 +1049,18 @@ async function abrirModalSOS() {
         if (!resDeptos.ok) throw new Error('Error al cargar sucursales');
         const sucursales = await resDeptos.json();
 
-        // 2. Filtramos para NO pedirnos apoyo a nosotros mismos
-        const opciones = sucursales
-            .filter(suc => suc.id !== DEPARTAMENTO_ID)
+        // 2. Filtramos para NO pedirnos apoyo a nosotros mismos y quitamos duplicados
+        const sucursalesUnicas = [];
+        const idsVistos = new Set();
+        
+        for (const suc of sucursales) {
+            if (suc.id !== DEPARTAMENTO_ID && !idsVistos.has(suc.id)) {
+                idsVistos.add(suc.id);
+                sucursalesUnicas.push(suc);
+            }
+        }
+
+        const opciones = sucursalesUnicas
             .map(suc => `<option value="${suc.id}">${suc.nombre}</option>`)
             .join('');
 
