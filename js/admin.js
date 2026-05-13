@@ -105,29 +105,29 @@ async function registrarSucursal() {
     }
 }
 
-// FUNCIÓN 3: Vincular Gerente (Actualizada con los 3 campos de Nombre)
+// FUNCIÓN 3: Vincular Gerente (Versión Final LuckyDev)
 async function vincularGerencia() {
-    // 1. Atrapamos el valor de la sucursal (tu select)
     const deptoId = document.getElementById('sucursalSelect').value;
-    
-    // 2. Atrapamos los valores de los nuevos inputs que pusiste en el HTML
     const nombre = document.getElementById('admin-nombre').value.trim();
     const paterno = document.getElementById('admin-paterno').value.trim();
     const materno = document.getElementById('admin-materno').value.trim();
 
     const token = localStorage.getItem('lucky_token');
 
-    // 3. Validamos que no dejen lo importante vacío
     if (!deptoId || !nombre || !paterno) {
-        alert("⚠️ Faltan datos. La sucursal, el nombre y el apellido paterno son obligatorios.");
+        Swal.fire({
+            icon: 'warning',
+            title: 'Datos incompletos',
+            text: 'La sucursal, el nombre y el apellido paterno son obligatorios.',
+            background: '#1a1d23', color: '#fff'
+        });
         return;
     }
 
-    // 4. Armamos el "Paquete" exacto que espera recibir nuestro Java (DatosRegistroGerente)
     const payload = {
         nombre: nombre,
         apellidoPaterno: paterno,
-        apellidoMaterno: materno,
+        apellidoMaterno: materno, // Aquí ya viaja el materno para la unicidad
         departamentoId: parseInt(deptoId)
     };
 
@@ -141,24 +141,60 @@ async function vincularGerencia() {
             body: JSON.stringify(payload)
         });
 
+        // Procesamos la respuesta UNA sola vez
         const data = await response.json();
 
         if (response.ok) {
-            // Mostramos los datos de acceso generados por Java para que se los pases al gerente
-            alert(`✅ ¡Éxito! Gerente vinculado.\n\nGuarda estos datos de acceso:\n👤 Usuario: ${data.detalles.usuario}\n🔑 Contraseña: ${data.detalles.password}`);
-            
-            // Limpiamos los campos
+    Swal.fire({
+        title: '✅ ¡Éxito! Gerente vinculado',
+        icon: 'success',
+        background: '#1a1d23', 
+        color: '#ffffff',
+        html: `
+            <div style="text-align: left; background: #242832; color: white; padding: 20px; border-radius: 15px; border: 1px solid #10b981; margin-top: 15px;">
+                <p style="font-size: 11px; color: #10b981; margin-bottom: 12px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Credenciales de Acceso</p>
+                
+                <div style="margin-bottom: 15px;">
+                    <span style="font-size: 10px; color: #9ca3af; display: block; margin-bottom: 4px;">USUARIO GERENCIAL</span>
+                    <p style="font-family: 'JetBrains Mono', monospace; font-size: 16px; color: #ffffff; margin: 0; background: #1a1d23; padding: 8px; border-radius: 6px;">${data.detalles.usuario}</p>
+                </div>
+
+                <div>
+                    <span style="font-size: 10px; color: #9ca3af; display: block; margin-bottom: 4px;">PASSWORD TEMPORAL</span>
+                    <p style="font-family: 'JetBrains Mono', monospace; font-size: 16px; color: #fbbf24; margin: 0; background: #1a1d23; padding: 8px; border-radius: 6px;">${data.detalles.password}</p>
+                </div>
+            </div>
+            <p style="font-size: 11px; color: #9ca3af; margin-top: 15px;">Copia estos datos y entrégalos al nuevo gerente de sucursal.</p>
+        `,
+        confirmButtonText: 'He guardado los datos',
+        confirmButtonColor: '#6366f1', // Un color más acorde al Super Admin
+        customClass: {
+            popup: 'rounded-2xl'
+        }
+    });
+
+            // Limpieza de campos
             document.getElementById('admin-nombre').value = '';
             document.getElementById('admin-paterno').value = '';
             document.getElementById('admin-materno').value = '';
             document.getElementById('sucursalSelect').value = '';
-            
-            // Opcional: location.reload(); si quieres refrescar toda la página
+
         } else {
-            alert("❌ Error: " + (data.error || response.statusText));
+            // Usamos el 'data' que ya procesamos arriba para mostrar el error de duplicado
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo vincular',
+                text: data.error || 'El usuario ya existe o los datos son incorrectos.',
+                background: '#1a1d23', color: '#fff'
+            });
         }
     } catch (error) {
         console.error("Detalle del error:", error);
-        alert("🚀 Error de conexión: El servidor no responde o bloqueó la petición.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: 'El servidor de LuckyDev no responde.',
+            background: '#1a1d23', color: '#fff'
+        });
     }
 }

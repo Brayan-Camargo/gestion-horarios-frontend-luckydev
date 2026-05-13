@@ -1,10 +1,10 @@
 // ==========================================
 // GUARD — protege la página
 // ==========================================
- Auth.checkGuard([
+Auth.checkGuard([
     Auth.LEVELS.SUB_GERENTE,
-    Auth.LEVELS.GERENTE, 
-    Auth.LEVELS.ADMIN_EMPRESA, 
+    Auth.LEVELS.GERENTE,
+    Auth.LEVELS.ADMIN_EMPRESA,
     Auth.LEVELS.SUPER_ADMIN]);
 
 // ==========================================
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 2. Cargar notificaciones
     cargarNovedadesDesdeAPI();
-    
+
     // 3. Encender Modo Dios
     if (typeof inicializarPoderesSuperAdmin === "function") {
         inicializarPoderesSuperAdmin();
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 4. 🚀 CARGA DIRECTA (Sin depender de clics simulados)
     console.log("Iniciando carga automática de horarios...");
-    await ejecutarCargaDeHorarios(); 
+    await ejecutarCargaDeHorarios();
 });
 
 // ==========================================
@@ -217,7 +217,10 @@ if (refs.formEmpleado) {
         const btnSubmit = refs.formEmpleado.querySelector('button[type="submit"]');
         const originalContent = btnSubmit ? btnSubmit.innerHTML : '';
 
+        // Captura de valores (una sola vez)
         const nombreVal = getEl('nombre-empleado').value.trim();
+        const paternoVal = getEl('apellido-paterno').value.trim();
+        const maternoVal = getEl('apellido-materno').value.trim();
         const rolVal = getEl('rol-empleado').value;
         const entradaVal = getEl('entrada-fija').value;
         const salidaVal = getEl('salida-fija').value;
@@ -227,7 +230,7 @@ if (refs.formEmpleado) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Horario incompleto',
-                text: 'Si el empleado tiene horario fijo debes asignar Entrada y Salida. Si es rotativo, deja ambos en blanco.',
+                text: 'Asigna entrada y salida, o deja ambos vacíos.',
                 background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
                 color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
             });
@@ -238,17 +241,14 @@ if (refs.formEmpleado) {
 
         const nuevoEmpleado = {
             nombre: nombreVal,
+            apellidoPaterno: paternoVal,
+            apellidoMaterno: maternoVal,
             rol: rolVal,
             tieneHorarioFijo: tieneHorarioFijo,
             horaInicioDisponibilidad: entradaVal ? entradaVal + ":00" : null,
             horaFinDisponibilidad: salidaVal ? salidaVal + ":00" : null,
             departamentoId: DEPARTAMENTO_ID
         };
-
-        if (!nuevoEmpleado.nombre) {
-            Swal.fire('Campo requerido', 'El nombre no puede estar vacío.', 'warning');
-            return;
-        }
 
         try {
             if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = "Guardando..."; }
@@ -257,28 +257,59 @@ if (refs.formEmpleado) {
                 method: 'POST',
                 body: JSON.stringify(nuevoEmpleado)
             });
-
+            // En app.js, dentro del res.ok del formulario de empleado:
             if (res.ok) {
+                const data = await res.json();
+                const credenciales = data.detalles;
+
                 Swal.fire({
+                    title: '✅ ¡Registro Exitoso!',
                     icon: 'success',
-                    title: '¡Añadido!',
-                    text: `${nuevoEmpleado.nombre} se ha unido al equipo.`,
-                    timer: 3500,
-                    showConfirmButton: false,
-                    background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                    html: `
+            <div style="text-align: left; background: #1a1d23; color: white; padding: 20px; border-radius: 15px; border: 1px solid #6366f1; margin-top: 15px;">
+                <p style="font-size: 12px; color: #818cf8; margin-bottom: 15px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Credenciales de Acceso</p>
+                
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: #9ca3af;">USUARIO</span>
+                    <p style="font-family: monospace; font-size: 16px; color: #10b981; margin: 0;">${credenciales.usuario}</p>
+                </div>
+
+                <div>
+                    <span style="font-size: 10px; color: #9ca3af;">CONTRASEÑA TEMPORAL</span>
+                    <p style="font-family: monospace; font-size: 16px; color: #fbbf24; margin: 0;">${credenciales.password}</p>
+                </div>
+            </div>
+            <p style="font-size: 11px; color: #6b7280; margin-top: 15px;">Toma una captura de pantalla o copia estos datos. El empleado deberá usarlos para ingresar.</p>
+        `,
+                    confirmButtonText: 'He guardado los datos',
+                    confirmButtonColor: '#6366f1',
+                    background: refs.html.classList.contains('dark') ? '#0f1115' : '#ffffff',
                     color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
                 });
+
                 refs.formEmpleado.reset();
                 await cargarEmpleados();
-            } else {
-                const errorData = await res.json().catch(() => ({}));
-                Swal.fire('Error del servidor', errorData.error || errorData.message || 'No se pudo guardar el empleado.', 'error');
-            }
 
-        } catch (err) {
-            if (err.message !== 'Sesión expirada') {
-                Swal.fire('Error de Conexión', 'No puedo comunicarme con el servidor.', 'error');
+            } else {
+                // 🛡️ Captura inteligente de errores del servidor
+                let mensajeError = "Error inesperado en el servidor";
+                try {
+                    const errorData = await res.json();
+                    mensajeError = errorData.error || errorData.message || mensajeError;
+                } catch (e) {
+                    // Si no es JSON, intentamos leerlo como texto plano
+                    mensajeError = await res.text() || mensajeError;
+                }
+
+                Swal.fire({
+                    icon: 'error',
+                    title: '¡Vaya! Algo salió mal',
+                    text: mensajeError,
+                    background: '#1a1d23', color: '#fff', confirmButtonColor: '#ef4444'
+                });
             }
+        } catch (err) {
+            console.error(err);
         } finally {
             if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = originalContent; }
         }
@@ -315,103 +346,106 @@ async function eliminarEmpleado(id) {
 
 
 // ==========================================
-// 6. MOTOR DE GENERACIÓN Y CARGA DE HORARIOS
+// ⚡ LÓGICA UNIFICADA DE GESTIÓN DE HORARIOS
 // ==========================================
+const btnAccionHorario = document.getElementById('btn-accion-horario');
 
-if (refs.botonGenerar) {
-    refs.botonGenerar.addEventListener('click', async () => {
-        if (datosGlobales && datosGlobales.length > 0) {
-            const { value: textoConfirmacion } = await Swal.fire({
-                title: '⚠️ ¡Cuidado!',
-                html: `Ya existe un horario generado para este mes.<br><br>
-                       Si continúas, <b>se borrará el horario actual y se generará uno completamente diferente</b>.<br><br>
-                       Escribe la palabra <b>CONFIRMAR</b> para proceder:`,
-                input: 'text',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#4b5563',
-                confirmButtonText: 'Sí, regenerar horario',
-                cancelButtonText: 'Cancelar',
-                background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
-                inputValidator: (value) => {
-                    if (value !== 'CONFIRMAR') return 'Debes escribir CONFIRMAR exactamente en mayúsculas.';
-                }
-            });
-            if (!textoConfirmacion) return;
+if (btnAccionHorario) {
+    btnAccionHorario.addEventListener('click', async () => {
+        // Si la tabla está vacía, vamos directo a generar
+        if (datosGlobales.length === 0) {
+            ejecutarGeneracionTotal();
+            return;
         }
 
-        refs.botonGenerar.innerText = "Calculando...";
-        refs.botonGenerar.disabled = true;
-
-        try {
-            const ahora = new Date();
-            const mesActual = ahora.getMonth() + 1;
-            const anioActual = ahora.getFullYear();
-
-            const respuesta = await Auth.apiFetch(`/api/horarios/generar/${DEPARTAMENTO_ID}?mes=${mesActual}&anio=${anioActual}`, { method: 'POST' });
-            if (!respuesta.ok) throw new Error('Error al generar el horario.');
-
-            const textoRespuesta = await respuesta.text();
-            Swal.fire({
-                title: '¡Listo!', text: textoRespuesta, icon: 'success',
-                background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
-                confirmButtonColor: '#10b981'
-            });
-            if (refs.botonProbar) refs.botonProbar.click();
-
-        } catch (error) {
-            if (error.message !== 'Sesión expirada') Swal.fire('Error', error.message, 'error');
-        } finally {
-            refs.botonGenerar.innerText = "⚙️ Generar Nuevo Mes";
-            refs.botonGenerar.disabled = false;
-        }
-    });
-}
-
-if (refs.botonRecalcular) {
-    refs.botonRecalcular.addEventListener('click', async () => {
-        const { isConfirmed } = await Swal.fire({
-            title: '🚨 ¿Recalcular desde Hoy?',
-            html: `Esto borrará los turnos futuros a partir de hoy y los volverá a calcular.<br><br>
-                   <b>Úsalo solo si aprobaste una petición tardía o registraste una incapacidad médica.</b>`,
-            icon: 'warning',
+        // Si ya hay datos, preguntamos qué desea hacer el gerente
+        const { value: opcion } = await Swal.fire({
+            title: '¿Qué deseas hacer con el horario?',
+            icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#ef4444',
+            confirmButtonColor: '#f59e0b',
             cancelButtonColor: '#4b5563',
-            confirmButtonText: 'Sí, recalcular',
+            confirmButtonText: 'Recalcular desde Hoy',
+            denyButtonText: 'Regenerar todo el Mes',
+            showDenyButton: true,
             cancelButtonText: 'Cancelar',
-            background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
+            background: refs.html.classList.contains('dark') ? '#1a1d23' : '#ffffff',
             color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
         });
 
-        if (!isConfirmed) return;
-
-        refs.botonRecalcular.innerHTML = "⏳ Recalculando...";
-        refs.botonRecalcular.disabled = true;
-
-        try {
-            const respuesta = await Auth.apiFetch(`/api/horarios/regenerar-emergencia/${DEPARTAMENTO_ID}`, { method: 'POST' });
-            if (!respuesta.ok) throw new Error('Error al recalcular el horario.');
-
-            Swal.fire({
-                title: '¡Operación Exitosa!', text: await respuesta.text(), icon: 'success',
-                timer: 2500, showConfirmButton: false,
-                background: refs.html.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
-            });
-            if (refs.botonProbar) refs.botonProbar.click();
-
-        } catch (error) {
-            if (error.message !== 'Sesión expirada') Swal.fire('Error', error.message, 'error');
-        } finally {
-            refs.botonRecalcular.innerHTML = "<span>🚨</span> Recalcular desde Hoy";
-            refs.botonRecalcular.disabled = false;
+        if (opcion === true) {
+            // El usuario le dio al botón naranja (Recalcular desde hoy)
+            ejecutarRecalculoEmergencia();
+        } else if (opcion === false) {
+            // SweetAlert lanza false en denyButton por defecto si no se configura distinto
+            // pero para ser exactos usamos el check de isDenied en el resultado
         }
     });
 }
+
+// Para manejar mejor el SweetAlert con 3 opciones, usa este listener en su lugar:
+if (btnAccionHorario) {
+    btnAccionHorario.addEventListener('click', async () => {
+        const result = await Swal.fire({
+            title: 'Gestión Inteligente de Horarios',
+            text: '¿Cómo deseas actualizar la agenda de tu equipo?',
+            icon: 'info',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: '🚀 Ajustar desde Hoy',
+            denyButtonText: '📅 Planificar Mes Completo', // Mucho más amable que "Borrar"
+            cancelButtonText: 'Regresar',
+            confirmButtonColor: '#10b981', // Verde éxito
+            denyButtonColor: '#6366f1',    // Un violeta/índigo (menos agresivo que el rojo)
+            background: refs.html.classList.contains('dark') ? '#1a1d23' : '#ffffff',
+            color: refs.html.classList.contains('dark') ? '#ffffff' : '#374151',
+        });
+
+        if (result.isConfirmed) {
+            ejecutarRecalculoEmergencia();
+        } else if (result.isDenied) {
+            const { value: confirmar } = await Swal.fire({
+                title: 'Nueva Planificación Mensual',
+                html: `Esta acción creará una <b>nueva distribución de turnos</b> para todo el mes.<br><br>Para confirmar la reestructuración, escribe la palabra:`,
+                input: 'text',
+                inputPlaceholder: 'CONFIRMAR',
+                showCancelButton: true,
+                confirmButtonText: 'Generar Nueva Agenda',
+                confirmButtonColor: '#ef4444', // Aquí sí usamos rojo, porque es la confirmación final de un cambio grande
+                inputValidator: (value) => {
+                    if (value !== 'CONFIRMAR') return 'Escribe la palabra correctamente para continuar';
+                }
+            });
+            if (confirmar) ejecutarGeneracionTotal();
+        }
+    });
+}
+
+// --- FUNCIONES DE SOPORTE ---
+
+async function ejecutarGeneracionTotal() {
+    const ahora = new Date();
+    const mes = ahora.getMonth() + 1;
+    const anio = ahora.getFullYear();
+    try {
+        const res = await Auth.apiFetch(`/api/horarios/generar/${DEPARTAMENTO_ID}?mes=${mes}&anio=${anio}`, { method: 'POST' });
+        if (res.ok) {
+            Swal.fire('¡Éxito!', 'Horario mensual generado.', 'success');
+            ejecutarCargaDeHorarios();
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function ejecutarRecalculoEmergencia() {
+    try {
+        const res = await Auth.apiFetch(`/api/horarios/regenerar-emergencia/${DEPARTAMENTO_ID}`, { method: 'POST' });
+        if (res.ok) {
+            Swal.fire('Actualizado', 'Se han ajustado los turnos desde hoy.', 'success');
+            ejecutarCargaDeHorarios();
+        }
+    } catch (e) { console.error(e); }
+}
+
 
 // Función para cargar los datos (la lógica que antes estaba en el botón Probar)
 async function ejecutarCargaDeHorarios() {
@@ -431,7 +465,7 @@ async function ejecutarCargaDeHorarios() {
 
         const ahora = new Date();
         const anioActual = ahora.getFullYear();
-        const mesActual = ahora.getMonth(); 
+        const mesActual = ahora.getMonth();
         mesPrincipal = String(mesActual + 1).padStart(2, '0');
 
         const primerDiaDelMes = new Date(anioActual, mesActual, 1);
@@ -460,7 +494,7 @@ async function ejecutarCargaDeHorarios() {
         if (refs.zonaCaptura) refs.zonaCaptura.classList.remove('hidden');
         if (refs.botonDescargar) refs.botonDescargar.classList.remove('hidden');
 
-        const hoyIso = `${anioActual}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+        const hoyIso = `${anioActual}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
         const indexHoy = fechasUnicasMes.indexOf(hoyIso);
         const semanaASeleccionar = indexHoy !== -1 ? Math.floor(indexHoy / 7) : 0;
 
@@ -521,13 +555,13 @@ function renderizarMatrizSemanal(indiceSemana) {
 
     // Cuerpo
     refs.tablaBody.innerHTML = empleadosUnicos.map(emp => {
-        
+
         // 🚀 NUEVO: Detectamos si este empleado es un refuerzo foráneo
         const esVisitante = datosGlobales.some(d => d.nombreEmpleado === emp && d.notaGerente && d.notaGerente.includes('APOYO_SOS'));
-        
+
         // Le ponemos una etiqueta bonita al lado del nombre
-        const nombreDisplay = esVisitante 
-            ? `${emp} <span class="bg-blue-600 text-white text-[9px] px-1 ml-1 rounded font-bold uppercase tracking-wider">Refuerzo</span>` 
+        const nombreDisplay = esVisitante
+            ? `${emp} <span class="bg-blue-600 text-white text-[9px] px-1 ml-1 rounded font-bold uppercase tracking-wider">Refuerzo</span>`
             : emp;
 
         const celdas = diasDeEstaSemana.map(fecha => {
@@ -552,10 +586,10 @@ function renderizarMatrizSemanal(indiceSemana) {
                 } else {
                     const hIn = turno.inicio.split('T')[1].substring(0, 5);
                     const hOut = turno.fin.split('T')[1].substring(0, 5);
-                    
+
                     // 🚀 NUEVO: Si es el turno de apoyo, lo pintamos azul para que resalte
                     if (turno.notaGerente && turno.notaGerente.includes('APOYO_SOS')) {
-                         contenido = `<div class="flex flex-col items-center justify-center h-full gap-1 bg-blue-900/30 border border-blue-500/50 rounded p-1 mx-1">
+                        contenido = `<div class="flex flex-col items-center justify-center h-full gap-1 bg-blue-900/30 border border-blue-500/50 rounded p-1 mx-1">
                             <span class="text-blue-400 font-bold text-[10px] uppercase">Apoyo S.O.S</span>
                             <span class="texto-hora font-medium text-blue-100">${hIn} — ${hOut}</span>
                         </div>`;
@@ -698,8 +732,8 @@ function renderizarNovedades() {
         if (item.esAsistencia) {
             const esHorasExtra = item.tipo === 'HORAS_EXTRA_PENDIENTES';
             const esRetardo = item.tipo === 'LLEGADA_TARDE_PENDIENTE';
-            const esOmision = item.tipo === 'OMISION_DE_SALIDA_PENDIENTE'; 
-            
+            const esOmision = item.tipo === 'OMISION_DE_SALIDA_PENDIENTE';
+
             if (esHorasExtra) {
                 colorPrioridad = "bg-emerald-100 text-emerald-700 border-emerald-200";
                 textoPrioridad = "⏱️ HORAS EXTRA";
@@ -720,14 +754,14 @@ function renderizarNovedades() {
             botonesAccion = generarBotonesAprobacion(item.id, true);
 
         } else {
-            
+
             const esCobroHoras = item.tipo === 'PERMISO_ESPECIAL' && item.observacion?.includes('BANCO_HORAS');
 
             if (item.tipo === 'SOLICITUD_APOYO') {
                 colorPrioridad = "bg-blue-100 text-blue-800 border-blue-300";
                 textoPrioridad = "🚨 S.O.S. SUCURSAL";
                 insigniaScore = `<div class="mt-2 text-[10px] font-bold text-blue-600">Petición de apoyo externo.</div>`;
-                
+
                 botonesAccion = `
                     <button onclick="iniciarPaseDeEmpleado(${item.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1 px-3 rounded shadow transition">
                         🤝 Enviar Apoyo
@@ -741,7 +775,7 @@ function renderizarNovedades() {
                 colorPrioridad = "bg-red-100 text-red-700 border-red-200";
                 textoPrioridad = "🚨 EMERGENCIA (Inamovible)";
                 botonesAccion = `<button onclick="resolverAccion(${item.id}, true, false)" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white px-3 py-1 rounded font-bold transition">Enterado</button>`;
-            } 
+            }
             // 3. Luego atrapamos el Cobro del Banco de Horas
             else if (esCobroHoras) {
                 const costoMins = 480;
@@ -757,7 +791,7 @@ function renderizarNovedades() {
                         </span>
                     </div>`;
                 botonesAccion = generarBotonesAprobacion(item.id, false);
-            } 
+            }
             // 4. Si no fue nada de lo de arriba, es un permiso normal que cobra Score
             else {
                 const costo = 50;
@@ -956,7 +990,7 @@ async function ejecutarValidacionYRegistro(e) {
                 cargarEmpleados(); // ✅ NUEVO: Recarga los puntos en el modal de equipo
                 cargarNovedadesDesdeAPI(); // ✅ NUEVO: Prende la campanita de inmediato
                 if (refs.botonProbar) refs.botonProbar.click();
-                
+
             } else {
                 // ✅ NUEVO: Aquí atrapamos el error 400 (ej. "Ya tienes una SALIDA registrada")
                 const errText = await resAsistencia.text();
@@ -964,10 +998,10 @@ async function ejecutarValidacionYRegistro(e) {
                 try {
                     const errJson = JSON.parse(errText);
                     msjError = errJson.message || errJson.error || msjError;
-                } catch (e) { 
-                    msjError = errText || msjError; 
+                } catch (e) {
+                    msjError = errText || msjError;
                 }
-                
+
                 Swal.fire('Atención', msjError, 'warning');
                 cerrarValidacion(); // Cerramos el modal de contraseña para que no se quede estorbando
             }
@@ -983,8 +1017,8 @@ async function ejecutarValidacionYRegistro(e) {
 // 👑 PODERES MULTI-SUCURSAL (SUPER ADMIN)
 // ==========================================
 async function inicializarPoderesSuperAdmin() {
-    const usuario = Auth.getUser(); 
-    
+    const usuario = Auth.getUser();
+
     // Si no es Super Admin, no mostramos nada
     if (!usuario || usuario.rol !== 'SUPER_ADMIN') return;
 
@@ -1001,7 +1035,7 @@ async function inicializarPoderesSuperAdmin() {
         if (!contenedor) return;
 
         // Construimos el selector con un diseño que combine con el Dashboard
-        let opcionesHTML = sucursales.map(suc => 
+        let opcionesHTML = sucursales.map(suc =>
             `<option value="${suc.id}" ${DEPARTAMENTO_ID === suc.id ? 'selected' : ''}> ${suc.nombre}</option>`
         ).join('');
 
@@ -1052,7 +1086,7 @@ async function abrirModalSOS() {
         // 2. Filtramos para NO pedirnos apoyo a nosotros mismos y quitamos duplicados
         const sucursalesUnicas = [];
         const idsVistos = new Set();
-        
+
         for (const suc of sucursales) {
             if (suc.id !== DEPARTAMENTO_ID && !idsVistos.has(suc.id)) {
                 idsVistos.add(suc.id);
@@ -1143,7 +1177,7 @@ async function iniciarPaseDeEmpleado(novedadId) {
         const resEmpleados = await Auth.apiFetch(`/api/empleados/departamento/${DEPARTAMENTO_ID}`);
         if (!resEmpleados.ok) throw new Error('No se pudieron cargar los empleados');
         const empleados = await resEmpleados.json();
-        
+
         // 🛡️ Filtro de mejores prácticas (Asegúrate de que Java mande 'activo')
         // Si aún no lo manda, puedes usar (e => e.activo !== false) temporalmente
         const empleadosActivos = empleados.filter(e => e.activo !== false);
@@ -1159,19 +1193,19 @@ async function iniciarPaseDeEmpleado(novedadId) {
         // 3. Armamos las opciones con los nombres reales de tu Java (inicio/fin)
         let opcionesHTML = '';
         empleadosActivos.forEach(emp => {
-            const turnoEseDia = horarios.find(h => 
-                h.empleadoId === emp.id && 
-                h.inicio && 
+            const turnoEseDia = horarios.find(h =>
+                h.empleadoId === emp.id &&
+                h.inicio &&
                 h.inicio.startsWith(fechaApoyo)
             );
-            
-            let etiqueta = "✅ Libre (Sin turno asignado)"; 
-            
+
+            let etiqueta = "✅ Libre (Sin turno asignado)";
+
             if (turnoEseDia) {
                 // Usamos h.inicio y h.fin que vimos en tu consola
                 const horaEntrada = turnoEseDia.inicio.split('T')[1].substring(0, 5);
                 const horaSalida = turnoEseDia.fin.split('T')[1].substring(0, 5);
-                
+
                 if (turnoEseDia.esDescanso || (horaEntrada === '00:00' && horaSalida === '23:59')) {
                     etiqueta = "✅ Libre (En su Descanso)";
                 } else {

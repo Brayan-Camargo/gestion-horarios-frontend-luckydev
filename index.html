@@ -19,179 +19,214 @@
 
 <body class="bg-gray-100 dark:bg-[#0f1115] text-gray-800 dark:text-white p-4">
 
-    <header class="flex flex-wrap justify-between items-center mb-4 gap-4 bg-white dark:bg-[#1a1d23] p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
-    <div class="flex items-center gap-3">
-        <div class="bg-gradient-to-br from-orange-500 to-rose-500 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
-            <span class="text-white text-xl font-black">LD</span>
-        </div>
-        <div>
-            <h1 class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500 leading-tight">LuckyDev</h1>
-            <p class="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-widest">Horario Mensual</p>
-        </div>
-    </div>
-    
-    <div class="flex items-center gap-2">
-        <button id="btn-regresar-admin" onclick="window.location.href='admin.html'" class="hidden items-center gap-2 bg-indigo-500/10 hover:bg-indigo-500 text-indigo-500 hover:text-white px-3 py-2 rounded-xl transition-all font-bold text-xs">
-            📊 Panel Global
-        </button>
-
-        <div id="contenedor-salto-sucursal" class="hidden h-9"></div>
-        
-        <button id="btn-tema" class="p-2 rounded-xl bg-gray-100 dark:bg-[#0f1115] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors border border-transparent dark:border-gray-700">
-            <span id="icono-tema">🌙</span>
-        </button>
-        
-        <button onclick="Auth.logout()" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-3 py-2 rounded-xl font-bold transition text-xs">
-            Salir 🚪
-        </button>
-    </div>
-</header>
-
-<nav class="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white dark:bg-[#1a1d23] p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 w-full overflow-hidden">
-    
-    <div class="flex flex-wrap items-center gap-2">
-        <button id="btn-gestionar-empleados" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg font-bold transition text-xs shadow-sm">
-            👥 Equipo
-        </button>
-        
-        <button id="btn-novedades" class="relative bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg font-bold transition text-xs border border-gray-300 dark:border-gray-700">
-            📥 Peticiones
-            <span id="badge-novedades" class="hidden absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-md">0</span>
-        </button>
-        
-        <button onclick="abrirModalSOS()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded-lg transition shadow-sm">
-            🚨 Solicitar Apoyo
-        </button>
-
-        <div class="h-6 w-px bg-gray-300 dark:bg-gray-700 mx-1 hidden sm:block"></div>
-
-        <button onclick="window.location.href='checador.html'" class="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-600 hover:text-white px-3 py-2 rounded-lg transition text-xs font-bold border border-emerald-500/10">
-            ⏱️ Checador
-        </button>
-        
-        <button id="btn-pase-lista" class="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-600 hover:text-white px-3 py-2 rounded-lg transition text-xs font-bold border border-emerald-500/10">
-            📋 Asistencia
-        </button>
-    </div>
-
-    <div class="flex flex-wrap items-center gap-2 ml-auto">
-        <button id="btn-recalcular" class="bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white text-xs px-3 py-2 rounded-lg font-bold transition border border-orange-500/10">
-            ⚠️ Recalcular Hoy
-        </button>
-        
-        <button id="btn-generar" class="bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 text-white py-2 px-4 rounded-lg font-bold transition text-xs shadow-md">
-            ⚙️ Generar Mes
-        </button>
-        
-        <button id="btn-descargar" class="hidden bg-gray-800 text-white py-2 px-3 rounded-lg font-bold text-xs shadow-sm">
-            📸 PDF
-        </button>
-
-        <button id="btn-probar" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600 py-2 px-3 rounded-lg text-xs font-bold border border-transparent transition">
-            🔄 Actualizar
-        </button>
-    </div>
-</nav>
-
-        <div class="flex justify-center mb-4">
-            <select id="selector-semana" class="hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white px-4 py-2 rounded-lg font-bold cursor-pointer outline-none focus:ring-2 focus:ring-orange-500"></select>
-        </div>
-
-        <div id="zona-captura" class="hidden mt-4 bg-white dark:bg-[#1a1d23] p-6 rounded-2xl shadow-xl">
-            <h2 id="titulo-semana" class="text-center font-black text-xl mb-6 uppercase tracking-tighter text-indigo-500"></h2>
-            <p class="swipe-hint">← Desliza para ver todos los días →</p>
-            <div class="tabla-scroll-wrapper overflow-x-auto w-full border border-gray-800 rounded-xl">
-                <table class="w-full text-xs text-center border-collapse">
-                    <thead id="tabla-head"></thead>
-                    <tbody id="tabla-body" class="divide-y dark:divide-gray-800"></tbody>
-                </table>
+    <header
+        class="flex flex-wrap justify-between items-center mb-4 gap-4 bg-white dark:bg-[#1a1d23] p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+        <div class="flex items-center gap-3">
+            <div
+                class="bg-gradient-to-br from-orange-500 to-rose-500 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
+                <span class="text-white text-xl font-black">LD</span>
+            </div>
+            <div>
+                <h1
+                    class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500 leading-tight">
+                    LuckyDev</h1>
+                <p class="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-widest">Horario
+                    Mensual</p>
             </div>
         </div>
 
+        <div class="flex items-center gap-2">
+            <button id="btn-regresar-admin" onclick="window.location.href='admin.html'"
+                class="hidden items-center gap-2 bg-indigo-500/10 hover:bg-indigo-500 text-indigo-500 hover:text-white px-3 py-2 rounded-xl transition-all font-bold text-xs">
+                📊 Panel Global
+            </button>
+
+            <div id="contenedor-salto-sucursal" class="hidden h-9"></div>
+
+            <button id="btn-tema"
+                class="p-2 rounded-xl bg-gray-100 dark:bg-[#0f1115] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors border border-transparent dark:border-gray-700">
+                <span id="icono-tema">🌙</span>
+            </button>
+
+            <button onclick="Auth.logout()"
+                class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-3 py-2 rounded-xl font-bold transition text-xs">
+                Salir 🚪
+            </button>
+        </div>
+    </header>
+
+    <nav
+        class="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white dark:bg-[#1a1d23] p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 w-full overflow-hidden">
+
+        <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-gestionar-empleados"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg font-bold transition text-xs shadow-sm">
+                👥 Equipo
+            </button>
+
+            <button id="btn-novedades"
+                class="relative bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg font-bold transition text-xs border border-gray-300 dark:border-gray-700">
+                📥 Peticiones
+                <span id="badge-novedades"
+                    class="hidden absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-md">0</span>
+            </button>
+
+            <button onclick="abrirModalSOS()"
+                class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded-lg transition shadow-sm">
+                🚨 Solicitar Apoyo
+            </button>
+
+            <div class="h-6 w-px bg-gray-300 dark:bg-gray-700 mx-1 hidden sm:block"></div>
+
+            <button onclick="window.location.href='checador.html'"
+                class="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-600 hover:text-white px-3 py-2 rounded-lg transition text-xs font-bold border border-emerald-500/10">
+                ⏱️ Checador
+            </button>
+
+            <button id="btn-pase-lista"
+                class="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-600 hover:text-white px-3 py-2 rounded-lg transition text-xs font-bold border border-emerald-500/10">
+                📋 Asistencia
+            </button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 ml-auto">
+    <button id="btn-accion-horario" class="bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 text-white py-2 px-4 rounded-lg font-bold transition text-xs shadow-md">
+        ⚡ Actualizar Horario
+    </button>
+    
+    <button id="btn-probar" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600 py-2 px-3 rounded-lg text-xs font-bold transition">
+        🔄 Refrescar Vista
+    </button>
+
+    <button id="btn-descargar" class="hidden bg-gray-800 text-white py-2 px-3 rounded-lg font-bold text-xs shadow-sm">
+        📸 Descargar
+    </button>
+</div>
+    </nav>
+
+    <div class="flex justify-center mb-4">
+        <select id="selector-semana"
+            class="hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white px-4 py-2 rounded-lg font-bold cursor-pointer outline-none focus:ring-2 focus:ring-orange-500"></select>
     </div>
 
-    <div id="modal-validar-empleado" class="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 hidden opacity-0 transition-all duration-300">
+    <div id="zona-captura" class="hidden mt-4 bg-white dark:bg-[#1a1d23] p-6 rounded-2xl shadow-xl">
+        <h2 id="titulo-semana" class="text-center font-black text-xl mb-6 uppercase tracking-tighter text-indigo-500">
+        </h2>
+        <p class="swipe-hint">← Desliza para ver todos los días →</p>
+        <div class="tabla-scroll-wrapper overflow-x-auto w-full border border-gray-800 rounded-xl">
+            <table class="w-full text-xs text-center border-collapse">
+                <thead id="tabla-head"></thead>
+                <tbody id="tabla-body" class="divide-y dark:divide-gray-800"></tbody>
+            </table>
+        </div>
+    </div>
+
+    </div>
+
+    <div id="modal-validar-empleado"
+        class="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 hidden opacity-0 transition-all duration-300">
         <div class="bg-[#1a1d23] w-full max-w-sm rounded-2xl p-6 border border-emerald-500/30 text-center">
             <div class="text-4xl mb-4">🔐</div>
             <h3 id="validar-nombre-label" class="text-xl font-bold text-white mb-2">Confirmar Identidad</h3>
             <p class="text-gray-400 text-[10px] mb-6 uppercase tracking-widest">Ingresa tu clave personal</p>
             <form id="form-confirmar-asistencia" onsubmit="return false;">
                 <input type="text" autocomplete="username" style="display:none" aria-hidden="true">
-                <input type="password" id="pass-validacion" placeholder="Contraseña" autocomplete="current-password" class="w-full bg-[#0f1115] border border-gray-700 p-3 rounded-xl text-center text-xl text-emerald-400 outline-none focus:border-emerald-500 mb-6">
+                <input type="password" id="pass-validacion" placeholder="Contraseña" autocomplete="current-password"
+                    class="w-full bg-[#0f1115] border border-gray-700 p-3 rounded-xl text-center text-xl text-emerald-400 outline-none focus:border-emerald-500 mb-6">
                 <div class="flex gap-3">
-                    <button type="button" onclick="cerrarValidacion()" class="flex-1 text-gray-500 font-bold text-xs hover:text-white transition-colors">CANCELAR</button>
-                    <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl shadow-lg transition-all transform active:scale-95">CONFIRMAR</button>
+                    <button type="button" onclick="cerrarValidacion()"
+                        class="flex-1 text-gray-500 font-bold text-xs hover:text-white transition-colors">CANCELAR</button>
+                    <button type="submit"
+                        class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl shadow-lg transition-all transform active:scale-95">CONFIRMAR</button>
                 </div>
             </form>
         </div>
     </div>
 
     <div id="modal-empleados" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm hidden opacity-0 transition-all duration-300">
-        <div class="bg-white dark:bg-[#1a1d23] w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-300">
-            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-                <h2 class="text-xl font-bold flex items-center gap-2">👥 Configuración de Equipo</h2>
-                <button id="btn-cerrar-empleados" class="text-gray-400 hover:text-red-500 transition-colors text-2xl">&times;</button>
-            </div>
-            <div class="p-6 overflow-y-auto max-h-[80vh]">
-                <form id="form-nuevo-empleado" class="space-y-6 mb-8 p-6 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-gray-800">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-widest">Nombre Completo</label>
-                            <input type="text" id="nombre-empleado" placeholder="Ej. Brayan" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3.5 rounded-xl text-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all" required>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-widest">Puesto</label>
-                            <select id="rol-empleado" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3.5 rounded-xl text-lg outline-none cursor-pointer">
-                                <option value="VENDEDOR">Vendedor</option>
-                                <option value="ENCARGADO">Encargado</option>
-                                <option value="GERENTE">Gerente</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="bg-indigo-50/50 dark:bg-indigo-500/10 p-5 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-500/30">
-                        <label class="block text-xs font-black text-indigo-500 dark:text-indigo-400 uppercase mb-4 tracking-tighter text-center">
-                            ⌚ Toca los recuadros para asignar el horario fijo
-                        </label>
-                        <div class="flex items-center justify-center gap-6">
-                            <div class="relative text-center flex-1">
-                                <span class="block text-[10px] font-bold opacity-50 mb-1 uppercase">Entrada</span>
-                                <input type="time" id="entrada-fija" class="w-full bg-white dark:bg-gray-800 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 text-xl font-bold cursor-pointer text-center focus:ring-2 focus:ring-indigo-500 outline-none">
-                            </div>
-                            <div class="text-indigo-300 text-2xl font-light">→</div>
-                            <div class="relative text-center flex-1">
-                                <span class="block text-[10px] font-bold opacity-50 mb-1 uppercase">Salida</span>
-                                <input type="time" id="salida-fija" class="w-full bg-white dark:bg-gray-800 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 text-xl font-bold cursor-pointer text-center focus:ring-2 focus:ring-indigo-500 outline-none">
-                            </div>
-                        </div>
-                        <p class="text-[9px] text-center mt-3 text-indigo-400 italic">Si el empleado es rotativo, deja estos espacios en blanco.</p>
-                    </div>
-                    <button type="submit" id="btn-guardar-empleado" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-xl transition-all shadow-xl shadow-emerald-500/20 text-lg flex items-center justify-center gap-2">
-                        <span>✅</span> Confirmar e incluir al equipo
-                    </button>
-                </form>
+    <div class="bg-white dark:bg-[#1a1d23] w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-300">
+        
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+            <h2 class="text-xl font-bold flex items-center gap-2">👥 Configuración de Equipo</h2>
+            <button id="btn-cerrar-empleados" class="text-gray-400 hover:text-red-500 transition-colors text-2xl">&times;</button>
+        </div>
 
-                <div class="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-50 dark:bg-gray-800/50 text-[10px] uppercase font-bold opacity-60">
-                            <tr>
-                                <th class="px-6 py-3">Empleado</th>
-                                <th class="px-6 py-3">Rol</th>
-                                <th class="px-6 py-3 text-center">Horario Especial</th>
-                                <th class="px-6 py-3 text-right">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-empleados-body" class="divide-y divide-gray-100 dark:divide-gray-800"></tbody>
-                    </table>
+        <div class="p-6 overflow-y-auto max-h-[80vh]">
+            <form id="form-nuevo-empleado" class="space-y-6 mb-8 p-6 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Nombre(s)</label>
+                        <input type="text" id="nombre-empleado" placeholder="Ej. Juan" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Apellido Paterno</label>
+                        <input type="text" id="apellido-paterno" placeholder="Paterno" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Apellido Materno</label>
+                        <input type="text" id="apellido-materno" placeholder="Materno" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
                 </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-widest">Puesto</label>
+                    <select id="rol-empleado" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-xl outline-none cursor-pointer">
+                        <option value="PERSONAL_GENERAL">Vendedor</option>
+                        <option value="ENCARGADO">Encargado</option>
+                        <option value="GERENTE">Gerente</option>
+                    </select>
+                </div>
+
+                <div class="bg-indigo-50/50 dark:bg-indigo-500/10 p-5 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-500/30">
+                    <label class="block text-xs font-black text-indigo-500 dark:text-indigo-400 uppercase mb-4 tracking-tighter text-center">
+                        ⌚ Toca los recuadros para asignar el horario fijo
+                    </label>
+                    <div class="flex items-center justify-center gap-6">
+                        <div class="relative text-center flex-1">
+                            <span class="block text-[10px] font-bold opacity-50 mb-1 uppercase">Entrada</span>
+                            <input type="time" id="entrada-fija" class="w-full bg-white dark:bg-gray-800 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 text-xl font-bold text-center outline-none">
+                        </div>
+                        <div class="text-indigo-300 text-2xl font-light">→</div>
+                        <div class="relative text-center flex-1">
+                            <span class="block text-[10px] font-bold opacity-50 mb-1 uppercase">Salida</span>
+                            <input type="time" id="salida-fija" class="w-full bg-white dark:bg-gray-800 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 text-xl font-bold text-center outline-none">
+                        </div>
+                    </div>
+                    <p class="text-[9px] text-center mt-3 text-indigo-400 italic">Si el empleado es rotativo, deja estos espacios en blanco.</p>
+                </div>
+
+                <button type="submit" id="btn-guardar-empleado" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-xl transition-all shadow-xl text-lg flex items-center justify-center gap-2">
+                    <span>✅</span> Confirmar e incluir al equipo
+                </button>
+            </form>
+
+            <div class="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50 dark:bg-gray-800/50 text-[10px] uppercase font-bold opacity-60">
+                        <tr>
+                            <th class="px-6 py-3">Empleado</th>
+                            <th class="px-6 py-3">Rol</th>
+                            <th class="px-6 py-3 text-center">Horario Especial</th>
+                            <th class="px-6 py-3 text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-empleados-body" class="divide-y divide-gray-100 dark:divide-gray-800"></tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
 
-    <div id="modal-novedades" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm hidden opacity-0 transition-all duration-300">
-        <div class="bg-white dark:bg-[#1a1d23] w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-300">
-            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+    <div id="modal-novedades"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm hidden opacity-0 transition-all duration-300">
+        <div
+            class="bg-white dark:bg-[#1a1d23] w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-300">
+            <div
+                class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                 <h2 class="text-xl font-bold flex items-center gap-2">📥 Bandeja de Peticiones</h2>
-                <button id="btn-cerrar-modal" class="text-gray-400 hover:text-red-500 transition-colors text-2xl">&times;</button>
+                <button id="btn-cerrar-modal"
+                    class="text-gray-400 hover:text-red-500 transition-colors text-2xl">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto max-h-[75vh]">
                 <table class="w-full text-left">
@@ -207,19 +242,25 @@
                     </tbody>
                 </table>
             </div>
-            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end bg-gray-50 dark:bg-gray-800/50">
-                <button id="btn-cerrar-modal-footer" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-6 py-2 rounded-lg font-bold transition">
+            <div
+                class="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end bg-gray-50 dark:bg-gray-800/50">
+                <button id="btn-cerrar-modal-footer"
+                    class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-6 py-2 rounded-lg font-bold transition">
                     Cerrar
                 </button>
             </div>
         </div>
     </div>
 
-    <div id="modal-pase-lista" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden opacity-0 transition-all duration-300">
-        <div class="bg-white dark:bg-[#1a1d23] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-300">
-            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+    <div id="modal-pase-lista"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden opacity-0 transition-all duration-300">
+        <div
+            class="bg-white dark:bg-[#1a1d23] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-300">
+            <div
+                class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                 <h2 class="text-xl font-bold flex items-center gap-2 text-emerald-500">📋 Asistencia de Hoy</h2>
-                <button id="btn-cerrar-lista" class="text-gray-400 hover:text-red-500 transition-colors text-2xl">&times;</button>
+                <button id="btn-cerrar-lista"
+                    class="text-gray-400 hover:text-red-500 transition-colors text-2xl">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto max-h-[70vh]">
                 <div id="lista-empleados-hoy" class="flex flex-col gap-3">
