@@ -12,23 +12,26 @@
 
 <body class="bg-[#0f1115] text-white min-h-screen">
 
-    
+
     <!-- Barra de navegación superior -->
     <nav class="bg-[#1a1d23] border-b border-gray-800 p-4 flex justify-between items-center shadow-lg">
         <div class="flex items-center gap-3">
             <span class="text-2xl">🛡️</span>
             <h1 class="text-xl font-black text-indigo-500 uppercase tracking-tighter">LuckyDev Admin</h1>
         </div>
-        
+
         <!-- Botones de navegación para el Super Admin -->
         <div class="flex items-center gap-4">
-            <button onclick="window.location.href='index.html'" class="text-gray-400 hover:text-indigo-400 text-sm font-bold transition">
+            <button onclick="window.location.href='index.html'"
+                class="text-gray-400 hover:text-indigo-400 text-sm font-bold transition">
                 Ir a Dashboard
             </button>
-            <button onclick="window.location.href='checador.html'" class="text-gray-400 hover:text-indigo-400 text-sm font-bold transition">
+            <button onclick="window.location.href='checador.html'"
+                class="text-gray-400 hover:text-indigo-400 text-sm font-bold transition">
                 Ir a Checador
             </button>
-            <button onclick="Auth.logout()" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition">
+            <button onclick="Auth.logout()"
+                class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition">
                 Cerrar Sesión
             </button>
         </div>
@@ -40,24 +43,133 @@
             <p class="text-gray-400">Panel de control global para gestión de empresas y sucursales.</p>
         </header>
 
+
+        <section id="rh-dashboard" class="hidden mb-10 space-y-6">
+            <div class="flex flex-wrap items-end gap-4 bg-[#1a1d23] p-6 rounded-2xl border border-gray-800 shadow-xl">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Fecha Inicio</label>
+                    <input type="date" id="fechaInicio"
+                        class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl focus:border-indigo-500 outline-none transition text-white">
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Fecha Fin</label>
+                    <input type="date" id="fechaFin"
+                        class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl focus:border-indigo-500 outline-none transition text-white">
+                </div>
+                <button onclick="cargarReportesRH()"
+                    class="bg-indigo-600 hover:bg-indigo-700 px-8 py-3 rounded-xl font-bold transition text-white">
+                    Generar Reporte
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-[#1a1d23] p-6 rounded-2xl border border-gray-800 text-center">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Empleados</p>
+                    <p id="resumen-empleados" class="text-3xl font-black text-white">0</p>
+                </div>
+                <div
+                    class="bg-[#1a1d23] p-6 rounded-2xl border border-gray-800 text-center border-b-4 border-b-emerald-500">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Asistencias</p>
+                    <p id="resumen-asistencias" class="text-3xl font-black text-white">0</p>
+                </div>
+                <div
+                    class="bg-[#1a1d23] p-6 rounded-2xl border border-gray-800 text-center border-b-4 border-b-red-500">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Incapacidades</p>
+                    <p id="resumen-incapacidades" class="text-3xl font-black text-white">0</p>
+                </div>
+                <div
+                    class="bg-[#1a1d23] p-6 rounded-2xl border border-gray-800 text-center border-b-4 border-b-indigo-500">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Horas Extra</p>
+                    <p id="resumen-horas-extra" class="text-3xl font-black text-white">0.0</p>
+                </div>
+            </div>
+
+            <div class="bg-[#1a1d23] rounded-2xl border border-gray-800 shadow-xl overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-[#0f1115] text-xs font-bold text-gray-500 uppercase">
+                        <tr>
+                            <th class="p-4">Empleado</th>
+                            <th class="p-4">Puesto</th>
+                            <th class="p-4 text-center">Puntualidad</th>
+                            <th class="p-4 text-center">Fatiga</th>
+                            <th class="p-4 text-right">Banco Horas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-rh-cuerpo" class="text-sm">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- Sección de tarjetas de acción -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-            <!-- FORMULARIO: REGISTRAR EMPRESA -->
             <section class="bg-[#1a1d23] p-8 rounded-2xl border border-gray-800 shadow-xl">
                 <div class="flex items-center gap-3 mb-6">
                     <span class="bg-indigo-500/20 p-2 rounded-lg text-indigo-500">🏢</span>
-                    <h3 class="text-xl font-bold">Registrar Empresa</h3>
+                    <h3 class="text-xl font-bold">Gestión de Estructura</h3>
                 </div>
-                <form id="form-nueva-empresa" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Nombre Comercial</label>
-                        <input type="text" id="nombre-empresa" placeholder="Ej. Tienda de Ropa Lucky"
-                            class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl focus:border-indigo-500 outline-none transition">
+
+                <div class="space-y-6">
+                    <div class="p-4 bg-[#0f1115] rounded-xl border border-gray-800">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">1. Registrar Nueva Marca
+                            Global</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="nombre-empresa-madre" placeholder="Ej. LuckyDev Global"
+                                class="flex-1 bg-[#1a1d23] border border-gray-800 p-3 rounded-xl focus:border-indigo-500 outline-none transition text-white">
+                            <button type="button" onclick="registrarEmpresaMadre()"
+                                class="bg-indigo-600 hover:bg-indigo-700 px-4 rounded-xl font-bold transition text-white">
+                                Registrar Marca
+                            </button>
+                        </div>
                     </div>
-                    <button type="button" onclick="registrarSucursal()"
-                        class="w-full bg-indigo-600 hover:bg-indigo-700 py-3 rounded-xl font-bold transition text-white">
-                        Crear Nueva Sucursal
+
+                    <hr class="border-gray-800">
+
+                    <div class="p-4 bg-[#0f1115] rounded-xl border border-gray-800">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">2. Añadir Sucursal a una
+                            Marca</label>
+                        <form id="form-nueva-sucursal" class="space-y-4">
+                            <select id="empresaSucursalSelect"
+                                class="w-full bg-[#1a1d23] border border-gray-800 p-3 rounded-xl text-white outline-none focus:border-indigo-500">
+                                <option value="">Selecciona la Marca Madre...</option>
+                            </select>
+                            <input type="text" id="nombre-sucursal-input" placeholder="Ej. Sucursal Norte"
+                                class="w-full bg-[#1a1d23] border border-gray-800 p-3 rounded-xl focus:border-indigo-500 outline-none transition text-white">
+
+                            <button type="button" onclick="registrarSucursal()"
+                                class="w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-xl font-bold transition text-white">
+                                Vincular Nueva Sucursal
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-[#1a1d23] p-8 rounded-2xl border border-gray-800 shadow-xl">
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="bg-purple-500/20 p-2 rounded-lg text-purple-500">🔑</span>
+                    <h3 class="text-xl font-bold">Crear Dueño de Marca (Admin)</h3>
+                </div>
+                <form id="form-admin-empresa" class="space-y-4">
+                    <select id="empresaAdminSelect"
+                        class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl text-white outline-none">
+                        <option value="">Selecciona la Empresa...</option>
+                    </select>
+
+                    <input type="text" id="admin-marca-nombre" placeholder="Nombre(s)"
+                        class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl text-white outline-none focus:border-purple-500">
+
+                    <div class="flex gap-2">
+                        <input type="text" id="admin-marca-paterno" placeholder="Apellido Paterno"
+                            class="w-1/2 bg-[#0f1115] border border-gray-800 p-3 rounded-xl text-white outline-none focus:border-purple-500">
+                        <input type="text" id="admin-marca-materno" placeholder="Apellido Materno"
+                            class="w-1/2 bg-[#0f1115] border border-gray-800 p-3 rounded-xl text-white outline-none focus:border-purple-500">
+                    </div>
+
+                    <button type="button" onclick="crearAdminEmpresa()"
+                        class="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-bold transition">
+                        Dar Acceso Administrativo
                     </button>
                 </form>
             </section>
@@ -78,24 +190,32 @@
                         </select>
                     </div>
                     <div class="mb-3 text-left">
-    <label class="block text-xs font-bold text-gray-400 mb-1">NOMBRE(S)</label>
-    <input type="text" id="admin-nombre" class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 outline-none focus:border-emerald-500" placeholder="Ej. Luis Alfredo">
-</div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">NOMBRE(S)</label>
+                        <input type="text" id="admin-nombre"
+                            class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 outline-none focus:border-emerald-500"
+                            placeholder="Ej. Luis Alfredo">
+                    </div>
 
-<div class="mb-4 flex gap-2 text-left">
-    <div class="w-1/2">
-        <label class="block text-xs font-bold text-gray-400 mb-1">PATERNO</label>
-        <input type="text" id="admin-paterno" class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 outline-none focus:border-emerald-500" placeholder="Ej. Camargo">
-    </div>
-    <div class="w-1/2">
-        <label class="block text-xs font-bold text-gray-400 mb-1">MATERNO <span class="text-gray-600 font-normal">(Opcional)</span></label>
-        <input type="text" id="admin-materno" class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 outline-none focus:border-emerald-500" placeholder="Ej. Ramirez">
-    </div>
-</div>
-                    <button type="button" onclick="vincularGerencia()" class="btn-verde w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-xl font-bold transition">
+                    <div class="mb-4 flex gap-2 text-left">
+                        <div class="w-1/2">
+                            <label class="block text-xs font-bold text-gray-400 mb-1">PATERNO</label>
+                            <input type="text" id="admin-paterno"
+                                class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 outline-none focus:border-emerald-500"
+                                placeholder="Ej. Camargo">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="block text-xs font-bold text-gray-400 mb-1">MATERNO <span
+                                    class="text-gray-600 font-normal">(Opcional)</span></label>
+                            <input type="text" id="admin-materno"
+                                class="w-full bg-[#1a1d23] text-white border border-gray-600 rounded p-2 outline-none focus:border-emerald-500"
+                                placeholder="Ej. Ramirez">
+                        </div>
+                    </div>
+                    <button type="button" onclick="vincularGerencia()"
+                        class="btn-verde w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-xl font-bold transition">
                         Vincular Gerencia
                     </button>
-                        
+
                     </button>
                 </form>
             </section>
