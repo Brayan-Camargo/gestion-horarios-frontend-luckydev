@@ -243,7 +243,7 @@ if (refs.formEmpleado) {
             nombre: nombreVal,
             apellidoPaterno: paternoVal,
             apellidoMaterno: maternoVal,
-            rol: rolVal,
+            puesto: rolVal,
             tieneHorarioFijo: tieneHorarioFijo,
             horaInicioDisponibilidad: entradaVal ? entradaVal + ":00" : null,
             horaFinDisponibilidad: salidaVal ? salidaVal + ":00" : null,

@@ -7,6 +7,7 @@
     <title>LuckyDev - Panel Super Admin</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -39,7 +40,7 @@
 
     <main class="p-6 max-w-6xl mx-auto">
         <header class="mb-10">
-            <h2 class="text-3xl font-bold">Bienvenido, Brayan</h2>
+            <h2 id="welcome-title" class="text-3xl font-bold">Bienvenido</h2>
             <p class="text-gray-400">Panel de control global para gestión de empresas y sucursales.</p>
         </header>
 
@@ -55,6 +56,13 @@
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Fecha Fin</label>
                     <input type="date" id="fechaFin"
                         class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl focus:border-indigo-500 outline-none transition text-white">
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Sucursal</label>
+                    <select id="filtro-sucursal-rh"
+                        class="w-full bg-[#0f1115] border border-gray-800 p-3 rounded-xl focus:border-indigo-500 outline-none transition text-white">
+                        <option value="TODAS">Todas las Sucursales</option>
+                    </select>
                 </div>
                 <button onclick="cargarReportesRH()"
                     class="bg-indigo-600 hover:bg-indigo-700 px-8 py-3 rounded-xl font-bold transition text-white">
@@ -100,6 +108,25 @@
                 </table>
             </div>
         </section>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+        <!-- GRÁFICOS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+
+            <!-- Gráfico de Puntualidad -->
+            <div class="bg-[#1a1d23] p-6 rounded-2xl border border-gray-800 shadow-xl">
+                <h4 class="text-sm font-bold text-gray-400 uppercase mb-4">📊 Puntualidad por Empleado</h4>
+                <canvas id="chartPuntualidad" height="200"></canvas>
+            </div>
+
+            <!-- Gráfico de Fatiga -->
+            <div class="bg-[#1a1d23] p-6 rounded-2xl border border-gray-800 shadow-xl">
+                <h4 class="text-sm font-bold text-gray-400 uppercase mb-4">🧠 Distribución de Fatiga</h4>
+                <canvas id="chartFatiga" height="200"></canvas>
+            </div>
+
+        </div>
 
         <!-- Sección de tarjetas de acción -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -227,7 +254,7 @@
     <script src="js/auth.js"></script>
     <script>
         // EL CANDADO: Solo entra el SUPER_ADMIN
-        Auth.checkGuard(['SUPER_ADMIN']);
+        Auth.checkGuard(['SUPER_ADMIN', 'ADMIN_EMPRESA']);
     </script>
     <script src="js/admin.js"></script>
 </body>
