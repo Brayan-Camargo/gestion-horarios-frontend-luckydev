@@ -1,12 +1,12 @@
 const Auth = {
     // 1. Mapeo de roles exacto al Enum de Java
     LEVELS: {
-        SUPER_ADMIN:   'SUPER_ADMIN',   
-        ADMIN_EMPRESA: 'ADMIN_EMPRESA', 
-        GERENTE:       'GERENTE', 
-        SUB_GERENTE:   'SUB_GERENTE',
-        ENCARGADO:     'ENCARGADO',      
-        EMPLEADO:      'EMPLEADO'       
+        SUPER_ADMIN: 'SUPER_ADMIN',
+        ADMIN_EMPRESA: 'ADMIN_EMPRESA',
+        GERENTE: 'GERENTE',
+        SUB_GERENTE: 'SUB_GERENTE',
+        ENCARGADO: 'ENCARGADO',
+        EMPLEADO: 'EMPLEADO'
     },
 
     // 2. Obtiene los datos del usuario logueado
@@ -32,28 +32,32 @@ const Auth = {
             });
 
             if (response.ok) {
-                const data = await response.json(); 
+                const data = await response.json();
 
-                // ✅ AHORA GUARDAMOS LOS IDs MATEMÁTICOS
                 const userData = {
-                    nombre:         data.nombre || username,
-                    rol:            data.rol,
-                    token:          data.jwToken,
-                    empleadoId:     data.empleadoId,
+                    nombre: data.nombre || username,
+                    rol: data.rol,
+                    token: data.jwToken,
+                    empleadoId: data.empleadoId,
                     departamentoId: data.departamentoId
                 };
 
-                localStorage.setItem("lucky_user",  JSON.stringify(userData));
+                localStorage.setItem("lucky_user", JSON.stringify(userData));
                 localStorage.setItem("lucky_token", data.jwToken);
+
+                // 🚀 AQUÍ VA LA REDIRECCIÓN INTELIGENTE
+                if (data.rol === 'SUPER_ADMIN' || data.rol === 'ADMIN_EMPRESA') {
+                    window.location.href = 'admin.html'; // Los jefes van al panel
+                } else {
+                    window.location.href = 'index.html'; // Operativos van al horario
+                }
 
                 return { success: true, rol: data.rol };
 
             } else {
-                // El backend devuelve un texto en caso de 401, no un JSON
                 const errText = await response.text();
                 return { success: false, message: errText || 'Credenciales inválidas' };
             }
-
         } catch (error) {
             console.error("Error de conexión:", error);
             return { success: false, message: 'No se pudo conectar con el servidor' };
@@ -69,17 +73,12 @@ const Auth = {
             return false;
         }
 
-        // SUPER_ADMIN tiene llave maestra
-        if (user.rol === Auth.LEVELS.SUPER_ADMIN) return true;
-
-        // Limpiamos los roles para evitar errores de comparación
+        // Limpiamos la basura que pusiste aquí y dejamos solo la validación de acceso
         const rolUsuario = user.rol.trim().toUpperCase();
-        // Convertimos el array de permitidos a Mayúsculas también
         const listaPermitida = rolesPermitidos.map(r => r.trim().toUpperCase());
 
         if (!listaPermitida.includes(rolUsuario)) {
-            alert("Acceso denegado: Tu rango (" + rolUsuario + ") no tiene permiso aquí.");
-            // Redirección inteligente:
+            Swal.fire({ icon: 'error', title: 'Acceso denegado', text: `Tu rol (${rolUsuario}) no tiene permiso aquí.`, timer: 2000, showConfirmButton: false });
             if (rolUsuario === 'EMPLEADO' || rolUsuario === 'VENDEDOR') {
                 window.location.href = "checador.html";
             } else {

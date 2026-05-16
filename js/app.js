@@ -1018,14 +1018,19 @@ async function ejecutarValidacionYRegistro(e) {
 // ==========================================
 async function inicializarPoderesSuperAdmin() {
     const usuario = Auth.getUser();
+    if (!usuario) return;
 
-    // Si no es Super Admin, no mostramos nada
-    if (!usuario || usuario.rol !== 'SUPER_ADMIN') return;
+    // 1. Mostrar el botón de Panel Global a los 3 Jefes
+    if (['SUPER_ADMIN', 'ADMIN_EMPRESA', 'GERENTE'].includes(usuario.rol)) {
+        const btnRegresar = document.getElementById('btn-regresar-admin');
+        if (btnRegresar) btnRegresar.classList.replace('hidden', 'flex');
+    }
 
-    // Mostramos el botón de regresar al panel global
-    const btnRegresar = document.getElementById('btn-regresar-admin');
-    if (btnRegresar) btnRegresar.classList.replace('hidden', 'flex');
+    // 2. 🛑 EL CANDADO: Si es Gerente (o empleado), lo detenemos aquí. 
+    // No verán el selector para saltar a otra tienda.
+    if (usuario.rol === 'GERENTE' || usuario.rol === 'EMPLEADO') return;
 
+    // 3. De aquí en adelante, solo el Super Admin (o Admin Empresa) carga las sucursales
     try {
         const res = await Auth.apiFetch('/api/departamentos');
         if (!res.ok) throw new Error('No se pudieron cargar las sucursales');
@@ -1034,7 +1039,6 @@ async function inicializarPoderesSuperAdmin() {
         const contenedor = document.getElementById('contenedor-salto-sucursal');
         if (!contenedor) return;
 
-        // Construimos el selector con un diseño que combine con el Dashboard
         let opcionesHTML = sucursales.map(suc =>
             `<option value="${suc.id}" ${DEPARTAMENTO_ID === suc.id ? 'selected' : ''}> ${suc.nombre}</option>`
         ).join('');
@@ -1049,28 +1053,15 @@ async function inicializarPoderesSuperAdmin() {
             </div>
         `;
 
-        // Escuchar el cambio
         document.getElementById('selector-sucursal-admin').addEventListener('change', (e) => {
-            const nuevoId = parseInt(e.target.value);
-            DEPARTAMENTO_ID = nuevoId;
-
-            Swal.fire({
-                title: 'Saltando de sucursal...',
-                icon: 'info',
-                timer: 800,
-                showConfirmButton: false,
-                background: '#1a1d23', color: '#fff'
-            });
-
-            // Recarga de datos
+            DEPARTAMENTO_ID = parseInt(e.target.value);
+            Swal.fire({ title: 'Saltando de sucursal...', icon: 'info', timer: 800, showConfirmButton: false, background: '#1a1d23', color: '#fff' });
             datosGlobales = [];
             cargarNovedadesDesdeAPI();
             if (refs.botonProbar) refs.botonProbar.click();
         });
 
-    } catch (error) {
-        console.error("Error en salto de sucursal:", error);
-    }
+    } catch (error) { console.error("Error en salto de sucursal:", error); }
 }
 
 // ==========================================

@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -68,6 +69,10 @@
                     class="bg-indigo-600 hover:bg-indigo-700 px-8 py-3 rounded-xl font-bold transition text-white">
                     Generar Reporte
                 </button>
+                <button onclick="exportarReporteExcel()"
+                    class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-xl font-bold transition text-white flex items-center gap-2">
+                    📊 Descargar Excel
+                </button>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -96,11 +101,16 @@
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-[#0f1115] text-xs font-bold text-gray-500 uppercase">
                         <tr>
-                            <th class="p-4">Empleado</th>
-                            <th class="p-4">Puesto</th>
+                            <th class="p-4 text-left">Empleado</th>
+                            <th class="p-4 text-left">Puesto</th>
                             <th class="p-4 text-center">Puntualidad</th>
                             <th class="p-4 text-center">Fatiga</th>
                             <th class="p-4 text-right">Banco Horas</th>
+                            <th class="p-4 text-center">Días Trab.</th>
+                            <th class="p-4 text-center">Incapacidades</th>
+                            <th class="p-4 text-center">Descansos</th>
+                            <th class="p-4 text-center">Desc. Trab.</th>
+                            <th class="p-4 text-center text-red-500">Faltas</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-rh-cuerpo" class="text-sm">
@@ -129,7 +139,7 @@
         </div>
 
         <!-- Sección de tarjetas de acción -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div id="herramientas-super-admin" class="grid grid-cols-1 md:grid-cols-2 gap-8 hidden">
 
             <section class="bg-[#1a1d23] p-8 rounded-2xl border border-gray-800 shadow-xl">
                 <div class="flex items-center gap-3 mb-6">
@@ -254,7 +264,7 @@
     <script src="js/auth.js"></script>
     <script>
         // EL CANDADO: Solo entra el SUPER_ADMIN
-        Auth.checkGuard(['SUPER_ADMIN', 'ADMIN_EMPRESA']);
+        Auth.checkGuard(['SUPER_ADMIN', 'ADMIN_EMPRESA', 'GERENTE']);
     </script>
     <script src="js/admin.js"></script>
 </body>

@@ -4,36 +4,40 @@
 let chartPuntualidad, chartFatiga; // Evita duplicados al re-renderizar gráficos
 
 // ==========================================
-// 1. INICIALIZACIÓN
+// 1. INICIALIZACIÓN Y PERMISOS
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const user = Auth.getUser();
     if (!user) { Auth.logout(); return; }
 
-    // Saludo dinámico y elegante
-    const welcomeTitle = document.getElementById('welcome-title') || document.querySelector('h2');
-    if (welcomeTitle) {
-        const nombreCrudo = user.nombre || user.username;
-        welcomeTitle.textContent = `Bienvenida, ${formatearNombreUsuario(nombreCrudo)}`;
-    }
+    const welcomeTitle = document.querySelector('h2');
+    if (welcomeTitle) welcomeTitle.textContent = `Bienvenido(a), ${user.nombre || user.username}`;
 
-    // Control de vistas según rol
+    // 1. HERRAMIENTAS EXCLUSIVAS (Super Admin)
+    const herramientasAdicionales = document.getElementById('herramientas-super-admin');
     if (user.rol === 'SUPER_ADMIN') {
         cargarSucursales();
-        cargarEmpresasParaAdmin();
-    } else if (user.rol === 'ADMIN_EMPRESA') {
-        document.getElementById('rh-dashboard')?.classList.remove('hidden');
+        cargarEmpresasParaAdmin(); 
+        // 👇 Le quitamos el hidden porque SÍ es el Super Admin
+        if (herramientasAdicionales) herramientasAdicionales.classList.remove('hidden');
+    }
 
-        // Ocultamos las herramientas de Super Admin
-        const adminGrid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2');
-        if (adminGrid) adminGrid.classList.add('hidden');
+    // 2. PANEL DE REPORTES (Todos los jefes)
+    if (['SUPER_ADMIN', 'ADMIN_EMPRESA', 'GERENTE'].includes(user.rol)) {
+        const rhDash = document.getElementById('rh-dashboard');
+        if (rhDash) rhDash.classList.remove('hidden');
 
-        // Fechas por defecto: del día 1 al día de hoy
         const hoy = new Date();
         document.getElementById('fechaFin').value   = hoy.toISOString().split('T')[0];
         document.getElementById('fechaInicio').value = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
 
-        cargarFiltroSucursalesRH();
+        // Candado visual para Gerente: No puede ver el filtro de sucursales
+        if (user.rol === 'GERENTE') {
+            const filtroSucursalDiv = document.getElementById('filtro-sucursal-rh')?.parentElement;
+            if (filtroSucursalDiv) filtroSucursalDiv.classList.add('hidden');
+        } else {
+            cargarFiltroSucursalesRH(); 
+        }
     }
 });
 
@@ -54,7 +58,11 @@ const formatearNombreUsuario = (username) => {
 async function cargarReportesRH() {
     const inicioStr = document.getElementById('fechaInicio').value;
     const finStr = document.getElementById('fechaFin').value;
-    const sucursalId = document.getElementById('filtro-sucursal-rh').value;
+    
+    // 🛑 EL SEGURO ANTI-CRASH: Verificamos si el filtro existe antes de leer su valor
+    const filtroEl = document.getElementById('filtro-sucursal-rh');
+    const sucursalId = filtroEl ? filtroEl.value : null; 
+
     if (!inicioStr || !finStr) return;
 
     // ✅ Validación de rango — máximo 1 año
@@ -64,7 +72,7 @@ async function cargarReportesRH() {
         return;
     }
 
-    // Ejecutamos ambas cargas en paralelo para mayor velocidad
+    // Ejecutamos ambas cargas en paralelo
     await actualizarTarjetasResumen(inicioStr, finStr, sucursalId);
     await cargarTablaDetalladaRH(inicioStr, finStr, sucursalId);
 }
@@ -82,17 +90,19 @@ async function actualizarTarjetasResumen(inicio, fin, sucursalId) {
         });
         const data = await res.json();
 
-        document.getElementById('resumen-empleados').textContent    = data.totalEmpleados;
-        document.getElementById('resumen-asistencias').textContent   = data.asistenciasRegistradas;
+        document.getElementById('resumen-empleados').textContent = data.totalEmpleados;
+        document.getElementById('resumen-asistencias').textContent = data.asistenciasRegistradas;
         document.getElementById('resumen-incapacidades').textContent = data.totalIncapacidades;
-        document.getElementById('resumen-horas-extra').textContent   = data.totalHorasExtra?.toFixed(1) ?? '0.0';
+        document.getElementById('resumen-horas-extra').textContent = data.totalHorasExtra?.toFixed(1) ?? '0.0';
     } catch (e) { console.error("Error en resumen:", e); }
 }
 
 // ✅ Recibe parámetros de forma consistente con actualizarTarjetasResumen
+// ==========================================
+// 2. RENDERIZADO DE TABLA MAESTRA CON BAJAS
+// ==========================================
 async function cargarTablaDetalladaRH(inicio, fin, sucursalId) {
     try {
-        // 1. Construimos la URL dinámicamente
         let urlDetalle = `http://localhost:8080/api/dashboard/reporte-detallado?fechaInicio=${inicio}&fechaFin=${fin}`;
         if (sucursalId && sucursalId !== "TODAS") {
             urlDetalle += `&sucursalId=${sucursalId}`;
@@ -103,8 +113,8 @@ async function cargarTablaDetalladaRH(inicio, fin, sucursalId) {
         });
         const empleados = await res.json();
 
-        // (Todo tu código de renderizarGraficos y el .map() de la tabla se queda EXACTAMENTE igual a partir de aquí)
-        renderizarGraficos(empleados);
+        // Evita errores si la gráfica no existe
+        if(typeof renderizarGraficos === 'function') renderizarGraficos(empleados);
 
         const cuerpo = document.getElementById('tabla-rh-cuerpo');
         if (!cuerpo) return;
@@ -117,18 +127,33 @@ async function cargarTablaDetalladaRH(inicio, fin, sucursalId) {
                 ? `<span class="bg-red-500/10 text-red-500 border border-red-500/20 px-2 py-1 rounded text-[10px] font-black animate-pulse">⚠️ ALERTA FATIGA</span>`
                 : `<span class="text-gray-500 text-xs italic">Normal</span>`;
 
+            // Horas
+            const horasBalance = (emp.balanceHoras / 60).toFixed(1);
+
+            // 🔴 ETIQUETA DE BAJA (Verificamos el campo activo)
+            const etiquetaBaja = (emp.activo === false) 
+                ? `<div class="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wide">🔴 BAJA: ${emp.fechaBaja || 'Sin fecha'}</div>` 
+                : '';
+            const opacidadFila = (emp.activo === false) ? 'opacity-50' : '';
+
             return `
-                <tr class="border-b border-gray-800 hover:bg-gray-800/30 transition">
+                <tr class="border-b border-gray-800 hover:bg-gray-800/30 transition ${opacidadFila}">
                     <td class="p-4">
                         <div class="font-bold text-white">${emp.nombre}</div>
                         <div class="text-[10px] text-gray-500 uppercase">${emp.sucursal}</div>
+                        ${etiquetaBaja} 
                     </td>
                     <td class="p-4 text-gray-400 text-sm">${formatearPuesto(emp.puesto)}</td>
                     <td class="p-4 text-center font-black ${colorPunt}">${emp.porcentajePuntualidad.toFixed(1)}%</td>
                     <td class="p-4 text-center">${badgeFatiga}</td>
                     <td class="p-4 text-right font-mono ${emp.balanceHoras >= 0 ? 'text-emerald-400' : 'text-red-400'}">
-                        ${emp.balanceHoras > 0 ? '+' : ''}${emp.balanceHoras} min
+                        ${emp.balanceHoras > 0 ? '+' : ''}${horasBalance} hrs
                     </td>
+                    <td class="p-4 text-center font-black text-emerald-400">${emp.diasTrabajados || 0}</td>
+                    <td class="p-4 text-center font-bold text-gray-300">${emp.incapacidades || 0}</td>
+                    <td class="p-4 text-center font-bold text-sky-400">${emp.descansosTomados || 0}</td> 
+                    <td class="p-4 text-center font-bold text-purple-400">${emp.descansosTrabajados || 0}</td>
+                    <td class="p-4 text-center font-black ${emp.faltas > 0 ? 'text-red-500' : 'text-gray-600'}">${emp.faltas || 0}</td>
                 </tr>`;
         }).join('');
 
@@ -137,16 +162,16 @@ async function cargarTablaDetalladaRH(inicio, fin, sucursalId) {
 
 // ✅ Gráficos recuperados del doc 19
 function renderizarGraficos(empleados) {
-    const canvasPunt   = document.getElementById('chartPuntualidad');
+    const canvasPunt = document.getElementById('chartPuntualidad');
     const canvasFatiga = document.getElementById('chartFatiga');
 
     // Si no existen los canvas en el HTML, no falla
     if (!canvasPunt || !canvasFatiga) return;
 
-    const nombres     = empleados.map(e => e.nombre);
+    const nombres = empleados.map(e => e.nombre);
     const puntualidad = empleados.map(e => e.porcentajePuntualidad);
-    const fatigas     = empleados.filter(e => e.tieneFatiga).length;
-    const normales    = empleados.length - fatigas;
+    const fatigas = empleados.filter(e => e.tieneFatiga).length;
+    const normales = empleados.length - fatigas;
 
     // Destruimos antes de re-crear para evitar duplicados
     if (chartPuntualidad) chartPuntualidad.destroy();
@@ -158,7 +183,7 @@ function renderizarGraficos(empleados) {
         },
         options: {
             plugins: { legend: { display: false } },
-            scales:  { y: { beginAtZero: true, max: 100 } }
+            scales: { y: { beginAtZero: true, max: 100 } }
         }
     });
 
@@ -180,11 +205,11 @@ function renderizarGraficos(empleados) {
 // ==========================================
 
 async function cargarEmpresasParaAdmin() {
-    const selectAdmin    = document.getElementById('empresaAdminSelect');
+    const selectAdmin = document.getElementById('empresaAdminSelect');
     const selectSucursal = document.getElementById('empresaSucursalSelect');
 
     try {
-        const res      = await fetch('http://localhost:8080/api/admin/listar-empresas', {
+        const res = await fetch('http://localhost:8080/api/admin/listar-empresas', {
             headers: { 'Authorization': `Bearer ${localStorage.getItem("lucky_token")}` }
         });
         const empresas = await res.json();
@@ -192,7 +217,7 @@ async function cargarEmpresasParaAdmin() {
         const options = '<option value="">Selecciona la Empresa...</option>' +
             empresas.map(emp => `<option value="${emp.id}">${emp.nombreComercial || emp.nombre_comercial}</option>`).join('');
 
-        if (selectAdmin)    selectAdmin.innerHTML    = options;
+        if (selectAdmin) selectAdmin.innerHTML = options;
         if (selectSucursal) selectSucursal.innerHTML = options;
 
     } catch (e) { console.error("Error al cargar empresas:", e); }
@@ -203,15 +228,15 @@ async function cargarSucursales() {
     if (!selectSucursal) return;
 
     try {
-        const res  = await fetch('http://localhost:8080/api/admin/listar-sucursales', {
+        const res = await fetch('http://localhost:8080/api/admin/listar-sucursales', {
             headers: { 'Authorization': `Bearer ${localStorage.getItem("lucky_token")}` }
         });
         const data = await res.json();
 
         selectSucursal.innerHTML = '<option value="">Selecciona una sucursal...</option>';
         data.forEach(sucursal => {
-            const opcion       = document.createElement('option');
-            opcion.value       = sucursal.id;
+            const opcion = document.createElement('option');
+            opcion.value = sucursal.id;
             opcion.textContent = sucursal.nombre;
             selectSucursal.appendChild(opcion);
         });
@@ -234,9 +259,9 @@ async function registrarEmpresaMadre() {
 
     try {
         const res = await fetch('http://localhost:8080/api/admin/registrar-empresa-real', {
-            method:  'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('lucky_token')}` },
-            body:    JSON.stringify({ nombre })
+            body: JSON.stringify({ nombre })
         });
 
         if (res.ok) {
@@ -250,7 +275,7 @@ async function registrarEmpresaMadre() {
 }
 
 async function registrarSucursal() {
-    const nombre    = document.getElementById('nombre-sucursal-input').value.trim();
+    const nombre = document.getElementById('nombre-sucursal-input').value.trim();
     const empresaId = document.getElementById('empresaSucursalSelect').value;
 
     if (!nombre || !empresaId) {
@@ -260,9 +285,9 @@ async function registrarSucursal() {
 
     try {
         const res = await fetch('http://localhost:8080/api/admin/registrar-sucursal', {
-            method:  'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('lucky_token')}` },
-            body:    JSON.stringify({ nombre, empresaId: parseInt(empresaId), descripcion: "Registrada por Super Admin" })
+            body: JSON.stringify({ nombre, empresaId: parseInt(empresaId), descripcion: "Registrada por Super Admin" })
         });
 
         if (res.ok) {
@@ -276,7 +301,7 @@ async function registrarSucursal() {
 
 async function vincularGerencia() {
     const deptoId = document.getElementById('sucursalSelect').value;
-    const nombre  = document.getElementById('admin-nombre').value.trim();
+    const nombre = document.getElementById('admin-nombre').value.trim();
     const paterno = document.getElementById('admin-paterno').value.trim();
     const materno = document.getElementById('admin-materno').value.trim();
 
@@ -287,17 +312,17 @@ async function vincularGerencia() {
     }
 
     try {
-        const res  = await fetch('http://localhost:8080/api/admin/vincular-gerente', {
-            method:  'POST',
+        const res = await fetch('http://localhost:8080/api/admin/vincular-gerente', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('lucky_token')}` },
-            body:    JSON.stringify({ nombre, apellidoPaterno: paterno, apellidoMaterno: materno, departamentoId: parseInt(deptoId) })
+            body: JSON.stringify({ nombre, apellidoPaterno: paterno, apellidoMaterno: materno, departamentoId: parseInt(deptoId) })
         });
         const data = await res.json();
 
         if (res.ok) {
             Swal.fire({
                 title: '✅ Gerente vinculado',
-                icon:  'success',
+                icon: 'success',
                 background: '#1a1d23', color: '#fff',
                 html: `
                     <div style="text-align:left; background:#242832; color:white; padding:20px; border-radius:15px; border:1px solid #10b981; margin-top:15px;">
@@ -312,7 +337,7 @@ async function vincularGerencia() {
                         </div>
                     </div>
                     <p style="font-size:11px; color:#9ca3af; margin-top:15px;">Copia estos datos y entrégalos al gerente.</p>`,
-                confirmButtonText:  'He guardado los datos',
+                confirmButtonText: 'He guardado los datos',
                 confirmButtonColor: '#6366f1'
             });
 
@@ -330,9 +355,9 @@ async function vincularGerencia() {
 
 async function crearAdminEmpresa() {
     const empresaId = document.getElementById('empresaAdminSelect').value;
-    const nombre    = document.getElementById('admin-marca-nombre').value.trim();
-    const paterno   = document.getElementById('admin-marca-paterno').value.trim();
-    const materno   = document.getElementById('admin-marca-materno').value.trim();
+    const nombre = document.getElementById('admin-marca-nombre').value.trim();
+    const paterno = document.getElementById('admin-marca-paterno').value.trim();
+    const materno = document.getElementById('admin-marca-materno').value.trim();
 
     if (!empresaId || !nombre || !paterno || !materno) {
         Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Todos los campos son obligatorios.', background: '#1a1d23', color: '#fff' });
@@ -340,17 +365,17 @@ async function crearAdminEmpresa() {
     }
 
     try {
-        const res  = await fetch('http://localhost:8080/api/admin/registrar-admin-empresa', {
-            method:  'POST',
+        const res = await fetch('http://localhost:8080/api/admin/registrar-admin-empresa', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('lucky_token')}` },
-            body:    JSON.stringify({ empresaId: parseInt(empresaId), nombre, apellidoPaterno: paterno, apellidoMaterno: materno })
+            body: JSON.stringify({ empresaId: parseInt(empresaId), nombre, apellidoPaterno: paterno, apellidoMaterno: materno })
         });
         const data = await res.json();
 
         if (res.ok) {
             Swal.fire({
                 title: '✅ Acceso Creado',
-                icon:  'success',
+                icon: 'success',
                 background: '#1a1d23', color: '#fff',
                 html: `
                     <div style="background:#242832; padding:15px; border-radius:10px; border:1px solid #a855f7;">
@@ -381,9 +406,32 @@ async function cargarFiltroSucursalesRH() {
         });
         const sucursales = await res.json();
         const select = document.getElementById('filtro-sucursal-rh');
-        
+
         sucursales.forEach(suc => {
             select.innerHTML += `<option value="${suc.id}">${suc.nombre}</option>`;
         });
     } catch (e) { console.error("Error al cargar sucursales:", e); }
+}
+
+// ==========================================
+// EXPORTACIÓN A EXCEL
+// ==========================================
+function exportarReporteExcel() {
+    const cuerpoTabla = document.getElementById('tabla-rh-cuerpo');
+
+    // Verificamos que haya datos antes de exportar
+    if (!cuerpoTabla || cuerpoTabla.children.length === 0) {
+        Swal.fire('Atención', 'Primero genera un reporte para poder descargarlo.', 'warning');
+        return;
+    }
+
+    // Tomamos la tabla HTML completa (incluyendo encabezados)
+    const tabla = cuerpoTabla.parentElement;
+
+    // SheetJS convierte la tabla HTML a un libro de Excel automáticamente
+    const workbook = XLSX.utils.table_to_book(tabla, { sheet: "Analítica RH" });
+
+    // Nombramos el archivo con la fecha actual
+    const fecha = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `Reporte_LuckyDev_RH_${fecha}.xlsx`);
 }
