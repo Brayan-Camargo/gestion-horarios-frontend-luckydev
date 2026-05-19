@@ -150,6 +150,7 @@ async function cargarTablaDetalladaRH(inicio, fin, sucursalId) {
                         ${emp.balanceHoras > 0 ? '+' : ''}${horasBalance} hrs
                     </td>
                     <td class="p-4 text-center font-black text-emerald-400">${emp.diasTrabajados || 0}</td>
+                    <td class="p-4 text-center font-bold text-yellow-500">${emp.vacaciones || 0}</td>
                     <td class="p-4 text-center font-bold text-gray-300">${emp.incapacidades || 0}</td>
                     <td class="p-4 text-center font-bold text-sky-400">${emp.descansosTomados || 0}</td> 
                     <td class="p-4 text-center font-bold text-purple-400">${emp.descansosTrabajados || 0}</td>
